@@ -1,0 +1,2909 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="application-name" content="OG Fieldwork">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OG Fieldwork">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2f6b4f">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>OG Fieldwork</title>
+<style>
+  :root{
+    --bg:#eef0e8;
+    --surface:#ffffff;
+    --surface-2:#e4e7dd;
+    --ink:#1b231d;
+    --ink-dim:#5b6459;
+    --line:#d3d8c9;
+    --accent:#2f6b4f;
+    --accent-ink:#f4faf6;
+    --accent-soft:#dfeae2;
+    --flag:#b5502e;
+    --flag-soft:#f7e3da;
+    --font-ui:Arial,Helvetica,sans-serif;
+    --font-mono:Arial,Helvetica,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12160f; --surface:#1b2117; --surface-2:#242b1f;
+      --ink:#e9ede3; --ink-dim:#a3ad98; --line:#333d2b;
+      --accent:#74bb92; --accent-ink:#0e1a13; --accent-soft:#1f3527;
+      --flag:#e2916a; --flag-soft:#3a2620;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12160f; --surface:#1b2117; --surface-2:#242b1f;
+    --ink:#e9ede3; --ink-dim:#a3ad98; --line:#333d2b;
+    --accent:#74bb92; --accent-ink:#0e1a13; --accent-soft:#1f3527;
+    --flag:#e2916a; --flag-soft:#3a2620;
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-ui);
+    padding-inline:16px; padding-block:16px 104px;
+    max-width:660px; margin-inline:auto; line-height:1.4;
+  }
+  h1,h2,h3{text-wrap:balance; margin:0;}
+  h1{font-size:1.05rem; font-weight:600;}
+  h2{font-size:.95rem; font-weight:600;}
+  h3{font-size:.82rem; font-weight:600;}
+  .eyebrow{font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); font-weight:600;}
+  button{font-family:inherit;}
+  input,select,textarea{
+    font-family:var(--font-ui); background:var(--surface); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:9px 10px;
+    font-size:.92rem; width:100%;
+  }
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  textarea{resize:vertical; min-height:60px;}
+  .mono{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+  label.field{display:flex; flex-direction:column; gap:4px; margin-bottom:12px;}
+  label.field span{font-size:.72rem; color:var(--ink-dim); font-weight:600;}
+  .row{display:flex; gap:8px;}
+  .row > label.field{flex:1; min-width:0;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px;}
+
+  header.topbar{
+    position:sticky; top:env(safe-area-inset-top,0px); background:var(--bg);
+    padding-block:6px 10px; margin-bottom:4px; z-index:5; border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{display:flex; align-items:center; gap:10px;}
+  .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);
+    display:flex;align-items:center;justify-content:center;font-size:1rem;flex:none;}
+  button.topbar-meta{min-width:0; background:none; border:none; color:inherit;
+    text-align:left; padding:0; cursor:pointer; font-family:inherit; flex:1;}
+  .topbar-meta .caret{color:var(--ink-dim); font-size:.7rem; margin-left:4px;}
+  .topbar-meta .proj{font-size:.88rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .topbar-meta .job{font-size:.7rem; color:var(--ink-dim);}
+  .sync-dot{margin-left:auto; width:9px; height:9px; border-radius:50%; background:var(--ink-dim); flex:none;}
+  .sync-dot[data-state="synced"]{background:var(--accent);}
+  .sync-dot[data-state="local"]{background:var(--flag);}
+
+  .view{display:flex; flex-direction:column; gap:14px;}
+  .view[hidden]{display:none;}
+
+  nav.tabbar{
+    position:fixed; left:0; right:0; bottom:0; background:var(--surface);
+    border-top:1px solid var(--line);
+    padding:7px 2px calc(7px + env(safe-area-inset-bottom,0px));
+    display:flex; justify-content:space-around; z-index:10;
+  }
+  nav.tabbar button{
+    background:none; border:none; color:var(--ink-dim);
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    font-size:.58rem; font-weight:600; padding:4px 2px; border-radius:8px; flex:1;
+  }
+  nav.tabbar button .ic{font-size:1rem;}
+  nav.tabbar button[aria-current="true"]{color:var(--accent);}
+  .badge{background:var(--flag); color:#fff; border-radius:99px; font-size:.58rem; padding:1px 5px; margin-left:3px; font-weight:700;}
+
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    border-radius:9px; padding:10px 14px; font-size:.86rem; font-weight:600;
+    border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer;}
+  .btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+  .btn.ghost{background:transparent;}
+  .btn.danger{color:var(--flag); border-color:var(--flag);}
+  .btn.small{padding:6px 10px; font-size:.76rem;}
+  .btn.block{width:100%;}
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+
+  .list-item{display:flex; align-items:center; gap:10px; background:var(--surface);
+    border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+    text-align:left; width:100%; color:var(--ink);}
+  .list-item .id{font-family:var(--font-mono); font-weight:700; font-size:.95rem; flex:none; min-width:52px;}
+  .list-item .sub{color:var(--ink-dim); font-size:.76rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .list-item .chev{margin-left:auto; color:var(--ink-dim);}
+  .list-item .flagdot{width:8px;height:8px;border-radius:50%;background:var(--flag); flex:none;}
+  .list-row{display:flex; gap:6px; align-items:stretch; margin-bottom:10px;}
+  .list-row .list-item{flex:1; min-width:0;}
+  .movecol{display:flex; flex-direction:column; gap:3px; flex:none;}
+  .movecol button{flex:1; padding:0 9px; font-size:.8rem; line-height:1;}
+  .empty-note{color:var(--ink-dim); font-size:.85rem; border:1px dashed var(--line);
+    border-radius:12px; padding:18px; text-align:center;}
+
+  .overlay{position:fixed; inset:0; background:var(--bg); z-index:20; overflow-y:auto; padding:16px; padding-bottom:40px;}
+  .overlay[hidden]{display:none;}
+  .overlay-head{display:flex; align-items:center; gap:10px; margin-bottom:14px;
+    position:sticky; top:0; background:var(--bg); padding-block:4px 8px; z-index:2;}
+  .overlay-head .btn{flex:none;}
+  .overlay-head h2{flex:1; font-family:var(--font-mono);}
+
+  .interval{border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:var(--surface-2);}
+  .interval-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .interval-top .tag{font-family:var(--font-mono); font-size:.78rem; color:var(--ink-dim);}
+
+  .preview{
+    background:var(--surface); border:1px solid var(--accent); border-left-width:3px;
+    border-radius:8px; padding:9px 11px; font-size:.84rem; margin-bottom:10px;
+  }
+  .preview .lbl{font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; display:block; margin-bottom:3px;}
+
+  .flagline{display:flex; align-items:center; gap:8px; margin-top:6px;}
+  .flagline input[type=checkbox]{width:auto;}
+  .flagline label{font-size:.78rem; color:var(--flag); font-weight:600;}
+  .flagged{border-color:var(--flag) !important; background:var(--flag-soft) !important;}
+
+  .toggle-line{display:flex; align-items:center; gap:8px; margin:8px 0;}
+  .toggle-line input[type=checkbox]{width:auto;}
+  .toggle-line span{font-size:.8rem; font-weight:600;}
+
+  .subblock{border:1px dashed var(--line); border-radius:8px; padding:10px; margin:8px 0; background:var(--surface);}
+  .subblock h3{margin-bottom:8px; color:var(--ink-dim); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em;}
+
+  table.grid{width:100%; border-collapse:collapse; font-size:.78rem;}
+  table.grid th,table.grid td{border-bottom:1px solid var(--line); padding:5px 6px; text-align:left; vertical-align:top;}
+  table.grid th{font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-dim);}
+  table.grid td.num{font-family:var(--font-mono); font-variant-numeric:tabular-nums; white-space:nowrap;}
+  table.dcp-table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:.82rem;}
+  table.dcp-table th,table.dcp-table td{border-bottom:1px solid var(--line); padding:5px 4px; text-align:left;}
+  table.dcp-table td input,table.dcp-table td select{padding:5px 6px; font-size:.82rem;}
+  .dcp-depth{color:var(--ink-dim); width:3.4em;}
+  .quickbox{border:1px solid var(--accent); border-radius:10px; padding:10px 12px;
+    background:var(--accent-soft); margin-bottom:12px;}
+  .quickhead{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .quickhead .eyebrow{color:var(--accent);}
+  .nextdepth{font-size:.74rem; font-weight:700; color:var(--accent);}
+  .quickrow{display:flex; gap:8px;}
+  .quickrow .quickin{flex:1; font-size:1.3rem; font-weight:700; text-align:center; padding:12px 10px;}
+  .quickrow .btn{flex:none; padding-inline:16px;}
+  .tablewrap{overflow-x:auto;}
+
+  .subtabs{display:flex; gap:6px;}
+  .subtabs button{flex:1; background:var(--surface); border:1px solid var(--line); border-radius:9px;
+    padding:8px; font-size:.8rem; font-weight:600; color:var(--ink-dim);}
+  .subtabs button[aria-current="true"]{background:var(--accent-soft); color:var(--accent); border-color:var(--accent);}
+
+  .photo-row{display:flex; gap:10px; align-items:flex-start;}
+  .photo-thumb{width:64px; height:64px; border-radius:8px; object-fit:cover; flex:none;
+    background:var(--surface-2); border:1px solid var(--line);}
+  .photo-fields{flex:1; min-width:0;}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center;}
+  .stat .n{font-family:var(--font-mono); font-size:1.15rem; font-weight:700;}
+  .stat .l{font-size:.62rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em;}
+
+  .toast{position:fixed; left:50%; bottom:88px; transform:translateX(-50%);
+    background:var(--ink); color:var(--bg); padding:9px 16px; border-radius:99px;
+    font-size:.8rem; z-index:40; opacity:0; pointer-events:none; transition:opacity .2s;
+    max-width:88vw; text-align:center;}
+  .toast.show{opacity:1;}
+  @media (prefers-reduced-motion: reduce){ .toast{transition:none;} }
+
+  hr.sep{border:none; border-top:1px solid var(--line); margin:4px 0;}
+  .helptext{font-size:.75rem; color:var(--ink-dim);}
+  details.ref{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px;}
+  details.ref summary{font-weight:600; font-size:.86rem; cursor:pointer;}
+  details.ref[open] summary{margin-bottom:8px;}
+</style>
+
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="mark">🪨</div>
+    <button class="topbar-meta" id="projectSwitchBtn" title="Switch project">
+      <div class="proj"><span id="hdrProject">New project</span><span class="caret">▾</span></div>
+      <div class="job" id="hdrJob">Set up a job to begin</div>
+    </button>
+    <div class="sync-dot" id="syncDot" data-state="local" title="Storage status"></div>
+  </div>
+</header>
+
+<main>
+  <!-- SETUP -->
+  <section class="view" id="view-setup">
+    <div><div class="eyebrow">Kickoff</div><h1>Site scope &amp; project details</h1></div>
+    <div class="card" style="border-color:var(--accent);">
+      <h2 style="margin-bottom:6px;">Current project</h2>
+      <div id="currentProjectLine" class="helptext">No project yet</div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn primary" id="newProjectBtn2">+ Start a new project</button>
+        <button class="btn" id="switchProjectBtn">Switch project</button>
+      </div>
+      <p class="helptext" style="margin-top:8px;">Every project keeps its own boreholes, DCP tests and photos. Starting a new one leaves this one untouched - you can switch back any time.</p>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:10px;">Project metadata</h2>
+      <label class="field"><span>Client</span><input id="pClient" placeholder="e.g. River Engineering"></label>
+      <label class="field"><span>Project name</span><input id="pProject" placeholder="e.g. Dalwallinu Dam"></label>
+      <div class="row">
+        <label class="field"><span>Job number</span><input id="pJob" class="mono" placeholder="OG-26-xxx"></label>
+        <label class="field"><span>Date</span><input id="pDate" type="date"></label>
+      </div>
+      <label class="field"><span>Location</span><input id="pLocation" placeholder="Site address"></label>
+      <label class="field"><span>Field engineer(s) / initials</span><input id="pEngineer" placeholder="e.g. PF &amp; AG"></label>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:10px;">Borehole scope</h2>
+      <div class="row">
+        <label class="field"><span>ID prefix</span><input id="bhPrefix" value="BH"></label>
+        <label class="field"><span>How many</span><input id="bhCount" type="number" min="0" inputmode="numeric" placeholder="6"></label>
+      </div>
+      <button class="btn primary block" id="genBoreholes">Generate borehole list</button>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:10px;">DCP / PSP scope</h2>
+      <div class="row">
+        <label class="field"><span>ID prefix</span><input id="dcpPrefix" value="DCP"></label>
+        <label class="field"><span>How many</span><input id="dcpCount" type="number" min="0" inputmode="numeric" placeholder="6"></label>
+      </div>
+      <button class="btn primary block" id="genDcp">Generate DCP list</button>
+      <p class="helptext" style="margin-top:8px;">Usually one DCP adjacent each borehole.</p>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:6px;">About this build</h2>
+      <p class="helptext">Descriptive terms follow <strong>AS 1726:2017</strong> (see the Ref tab). Captures borehole logs, DCP/PSP blow counts and photo captions. Infiltration tests aren't in this build yet.</p>
+    </div>
+  </section>
+
+  <!-- BOREHOLES -->
+  <section class="view" id="view-boreholes" hidden>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div><div class="eyebrow">Fieldwork</div><h1>Borehole logs</h1></div>
+      <button class="btn small primary" id="addBorehole">+ Add</button>
+    </div>
+    <div id="boreholeList"></div>
+  </section>
+
+  <!-- DCP -->
+  <section class="view" id="view-dcp" hidden>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div><div class="eyebrow">Fieldwork</div><h1>DCP / PSP tests</h1></div>
+      <button class="btn small primary" id="addDcp">+ Add</button>
+    </div>
+    <div id="dcpList"></div>
+  </section>
+
+  <!-- PHOTOS -->
+  <section class="view" id="view-photos" hidden>
+    <div><div class="eyebrow">Fieldwork</div><h1>Photo captions</h1></div>
+    <div class="subtabs">
+      <button id="deckSiteBtn" aria-current="true">Site photos</button>
+      <button id="deckBhBtn">Borehole photos</button>
+    </div>
+    <button class="btn primary block" id="addPhoto">+ Add photo</button>
+    <div id="photoList"></div>
+  </section>
+
+  <!-- REFERENCE -->
+  <section class="view" id="view-ref" hidden>
+    <div><div class="eyebrow">AS 1726:2017</div><h1>Logging reference</h1></div>
+    <p class="helptext">Descriptive terms and thresholds from AS 1726:2017 Geotechnical site investigations, for checking a call in the field.</p>
+    <div id="refBody"></div>
+  </section>
+
+  <!-- EXPORT -->
+  <section class="view" id="view-export" hidden>
+    <div><div class="eyebrow">Wrap up</div><h1>Export &amp; review</h1></div>
+    <div class="stat-grid" id="statGrid"></div>
+    <div class="card">
+      <h2 style="margin-bottom:8px;">Needs review</h2>
+      <div id="flaggedList" class="helptext">Nothing flagged yet.</div>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:10px;">PDF settings</h2>
+      <label class="field"><span>Text size on the printed log</span>
+        <select id="setPdfScale">
+          <option value="0.85">Compact (85%)</option>
+          <option value="0.92">Small (92%)</option>
+          <option value="1" selected>Standard (100%)</option>
+          <option value="1.1">Large (110%)</option>
+          <option value="1.25">Extra large (125%)</option>
+        </select></label>
+      <div class="toggle-line"><input type="checkbox" id="setAutoDensity" checked>
+        <span>Fill Consistency / Relative Density from DCP blow counts</span></div>
+      <p class="helptext">Uses the bands recovered from your DCP workbook (SAND: 0–2 Loose, 3–7 Medium Dense, 8–14 Dense, 15+ Very Dense). Anything you enter as a field assessment overrides it. Clay has no correlation available, so it stays blank.</p>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:10px;">Export files</h2>
+      <p class="helptext" style="margin-bottom:10px;">Raw captured data for transcription into the Opifex templates. JSON has everything; CSVs are quick spreadsheet views.</p>
+      <div class="btn-row">
+        <button class="btn primary" id="expPdf">⤓ Borehole logs (.pdf)</button>
+        <button class="btn primary" id="expDcpPdf">⤓ DCP logs (.pdf)</button>
+        <button class="btn" id="expJson">⤓ All data (.json)</button>
+        <button class="btn" id="expBh">⤓ Boreholes (.csv)</button>
+        <button class="btn" id="expDcp">⤓ DCP (.csv)</button>
+        <button class="btn" id="expPhotos">⤓ Photos (.csv)</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:6px;">Storage</h2>
+      <p class="helptext" id="storageNote">Checking…</p>
+    </div>
+  </section>
+</main>
+
+<div class="overlay" id="bhOverlay" hidden>
+  <div class="overlay-head">
+    <button class="btn small" data-close-overlay>← Back</button>
+    <h2 id="bhOverlayTitle">BH01</h2>
+    <button class="btn small" id="bhPdf">⤓ PDF</button>
+    <button class="btn small danger" id="bhDelete">Delete</button>
+  </div>
+  <div id="bhOverlayBody"></div>
+</div>
+
+<div class="overlay" id="dcpOverlay" hidden>
+  <div class="overlay-head">
+    <button class="btn small" data-close-overlay>← Back</button>
+    <h2 id="dcpOverlayTitle">DCP01</h2>
+    <button class="btn small" id="dcpPdf">⤓ PDF</button>
+    <button class="btn small danger" id="dcpDelete">Delete</button>
+  </div>
+  <div id="dcpOverlayBody"></div>
+</div>
+
+<div class="overlay" id="projOverlay" hidden>
+  <div class="overlay-head">
+    <button class="btn small" data-close-overlay>← Back</button>
+    <h2 style="font-family:inherit;">Projects</h2>
+    <button class="btn small primary" id="newProjectBtn">+ New</button>
+  </div>
+  <p class="helptext" style="margin-bottom:12px;">Each job keeps its own boreholes, DCP tests and photos. Switching here doesn't touch the others.</p>
+  <div id="projectSheetBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="jspdf.umd.min.js"></script>
+<script src="opifex-logo.js"></script>
+
+<nav class="tabbar">
+  <button data-tab="setup" aria-current="true"><span class="ic">📋</span>Setup</button>
+  <button data-tab="boreholes"><span class="ic">🕳️</span>Boreholes</button>
+  <button data-tab="dcp"><span class="ic">📈</span>DCP</button>
+  <button data-tab="photos"><span class="ic">📷</span>Photos</button>
+  <button data-tab="ref"><span class="ic">📖</span>Ref</button>
+  <button data-tab="export"><span class="ic">⤓</span>Export<span class="badge" id="flagBadge" hidden>0</span></button>
+</nav>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     AS 1726:2017 descriptive vocabulary.
+     Terms and thresholds are the Standard's; the assembled string
+     follows the Opifex log's own house order so transcribed output
+     matches existing logs.
+     ============================================================ */
+  var AS = {
+    soilNames: ['','SAND','CLAY','SILT','GRAVEL','COBBLES','BOULDERS','PEAT'],
+    secondary: ['','Clayey','Silty','Sandy','Gravelly'],
+    origins: ['','FILL','TOPSOIL','Residual soil','Extremely weathered material',
+              'Alluvial soil','Colluvial soil','Aeolian soil','Lacustrine soil',
+              'Estuarine soil','Marine soil','Slopewash'],
+    sizes: [['','—'],['f','fine'],['m','medium'],['c','coarse']],
+    angularity: [['','—'],['A','angular'],['SA','subangular'],['SR','subrounded'],['R','rounded']],
+    colourMods: ['','pale','dark','mottled'],
+    colours: ['','black','white','grey','red','brown','orange','yellow','purple','green','blue'],
+    // third element is the bare word, so ranges read "low to medium plasticity"
+    plasticity: [['','—',''],['NP','non-plastic','non-plastic'],['LP','low plasticity','low'],
+                 ['MP','medium plasticity','medium'],['HP','high plasticity','high']],
+    minorTerms: ['','trace','with'],
+    minorTypes: ['','clay','silt','fines','sand','gravels','cobbles','organics','rootlets'],
+    moistureCoarse: ['','Dry','Moist','Wet'],
+    moistureFine: ['','Moist, dry of plastic limit (w<PL)','Moist, near plastic limit (w≈PL)',
+                   'Moist, wet of plastic limit (w>PL)','Wet, near liquid limit (w≈LL)','Wet, wet of liquid limit (w>LL)'],
+    consistency: [['','—'],['VS','Very Soft — exudes between fingers when squeezed'],
+                  ['S','Soft — moulded by light finger pressure'],
+                  ['F','Firm — moulded by strong finger pressure'],
+                  ['St','Stiff — cannot be moulded by fingers'],
+                  ['VSt','Very Stiff — indented by thumb nail'],
+                  ['H','Hard — indented with difficulty by thumb nail'],
+                  ['Fr','Friable — crumbles easily by hand']],
+    density: [['','—'],['VL','Very Loose (ID ≤ 15%)'],['L','Loose (ID 15–35%)'],
+              ['MD','Medium Dense (ID 35–65%)'],['D','Dense (ID 65–85%)'],['VD','Very Dense (ID > 85%)']],
+    structure: ['','Layer','Lens','Pocket','Intermixed','Interbedded','Interlaminated','Fissured','Parting','Sheared surface','Tube/root hole'],
+    cementation: ['','Weakly cemented','Moderately cemented'],
+    // AS 1726:2017 Tables 9 & 10 group symbols with their typical names
+    classification: [['',' —'],
+      ['GW','GW — gravel / gravel-sand, little or no fines, well graded'],
+      ['GP','GP — gravel / gravel-sand, little or no fines, uniform'],
+      ['GM','GM — gravel-silt and gravel-sand-silt mixtures'],
+      ['GC','GC — gravel-clay and gravel-sand-clay mixtures'],
+      ['SW','SW — sand / gravel-sand, little or no fines, well graded'],
+      ['SP','SP — sand / gravel-sand, little or no fines, uniform'],
+      ['SM','SM — sand-silt mixtures'],
+      ['SC','SC — sand-clay mixtures'],
+      ['ML','ML — inorganic silt, very fine sand, rock flour, low plasticity'],
+      ['CL','CL — inorganic clay of low plasticity, gravelly / sandy clay'],
+      ['CI','CI — inorganic clay of medium plasticity'],
+      ['MH','MH — inorganic silt, high plasticity'],
+      ['CH','CH — inorganic clay of high plasticity'],
+      ['OL','OL — organic silt'],
+      ['OH','OH — organic clay of medium to high plasticity, organic silt'],
+      ['Pt','Pt — peat, highly organic soil']],
+    excavation: ['','Easy','Firm','Hard','Very Hard','Refusal'],
+    weathering: [['','—'],['RS','Residual Soil'],['XW','Extremely Weathered'],['HW','Highly Weathered'],
+                 ['MW','Moderately Weathered'],['SW','Slightly Weathered'],['FR','Fresh']],
+    rockStrength: [['','—'],['VL','Very Low (0.6–2 MPa)'],['L','Low (2–6 MPa)'],['M','Medium (6–20 MPa)'],
+                   ['H','High (20–60 MPa)'],['VH','Very High (60–200 MPa)'],['EH','Extremely High (>200 MPa)']],
+    duricrust: [['','not a duricrust'],['DI','DI — massive / hardpan (>90%)'],
+                ['DII','DII — vuggy / patchy (50–90%)'],['DIII','DIII — nodular / fragmental (<50%)']],
+    duricrustNames: ['','FERRICRETE (laterite)','SILCRETE','CALCRETE','GYPCRETE'],
+    rockNames: ['','SANDSTONE','SILTSTONE','MUDSTONE','CLAYSTONE','SHALE','CONGLOMERATE','BRECCIA','LIMESTONE',
+                'GRANITE','DOLERITE','BASALT','GNEISS','SCHIST','PHYLLITE','SLATE','QUARTZITE'],
+    sampleTypes: [['','—'],['BS','BS — bulk disturbed'],['DS','DS — disturbed (small)'],
+                  ['U50','U50 — 50 mm tube'],['U75','U75 — 75 mm tube'],['U100','U100 — 100 mm tube'],
+                  ['WS','WS — water sample'],['ES','ES — environmental sample']],
+    sptCodes: [['','normal — report N'],['rw','rw — rod weight only (N<1)'],['hw','hw — hammer+rod weight only (N<1)'],
+               ['hb','hb — hammer bouncing, discontinued'],['disc','discontinued — 30 blows < 100 mm']]
+  };
+
+  function optList(arr, current){
+    return arr.map(function(o){
+      var val, lbl;
+      if(Object.prototype.toString.call(o)==='[object Array]'){ val=o[0]; lbl=o[1]; }
+      else { val=o; lbl=(o===''?'—':o); }
+      return '<option value="'+esc(val)+'"'+(current===val?' selected':'')+'>'+esc(lbl)+'</option>';
+    }).join('');
+  }
+
+  /* ---------- AS 1726 description assembly (Opifex house order) ----------
+     ORIGIN: Secondary NAME: size, angularity, colour; Fines (x%), plasticity;
+     trace/with minors; moisture; consistency; structure; cementation (SYMBOL)
+     Every part is optional and omitted cleanly when blank.                  */
+  function buildDescription(iv){
+    var d = iv.d || {};
+    if(iv.isRock) return buildRockDescription(iv);
+    var out = '';
+    if(d.origin) out += d.origin.toUpperCase().indexOf('FILL')===0 || d.origin.toUpperCase().indexOf('TOPSOIL')===0
+      ? d.origin.toUpperCase() + ': ' : d.origin + ': ';
+    var nameBit = '';
+    if(d.secondary) nameBit += d.secondary + ' ';
+    if(d.name) nameBit += d.name;
+    if(!nameBit) nameBit = '';
+    out += nameBit;
+
+    var quals = [];
+    if(isFineName(d.name)){
+      // a CLAY or SILT is described by plasticity, not by grain size
+      var pp=plasticityPhrase(d.plasPrimaryFrom, d.plasPrimaryTo);
+      if(pp) quals.push(pp);
+    } else {
+      var size = sizePhrase(d.sizeFrom, d.sizeTo);
+      if(size) quals.push(size);
+      var ang = angPhrase(d.angFrom, d.angTo);
+      if(ang) quals.push(ang);
+    }
+    var col = [d.colourMod, d.colour].filter(Boolean).join(' ');
+    if(d.colour2) col = (col?col:'') + (col?'-':'') + d.colour2;
+    if(col) quals.push(col);
+    if(quals.length) out += (nameBit?': ':'') + quals.join(', ');
+
+    var secondBits = [];
+    if(d.secondary){
+      var secDesc=[];
+      if(isFineSec(d.secondary)){
+        var sp=plasticityPhrase(d.plasticity, d.plasticityTo);
+        if(sp) secDesc.push(sp);
+      } else {
+        // a sand or gravel fraction takes grain size and angularity
+        var ss=sizePhrase(d.secSizeFrom, d.secSizeTo);
+        if(ss) secDesc.push(ss);
+        var sa=angPhrase(d.secAngFrom, d.secAngTo);
+        if(sa) secDesc.push(sa);
+      }
+      if(d.secondaryPct || secDesc.length){
+        secondBits.push(secondaryNoun(d.secondary) + (d.secondaryPct ? ' ('+d.secondaryPct+'%)' : ''));
+        secDesc.forEach(function(x){ secondBits.push(x); });
+      }
+    }
+    if(secondBits.length) out += '; ' + secondBits.join(', ');
+    (d.minors||[]).forEach(function(m){
+      if(m.term && m.type) out += '; ' + m.term + ' ' + m.type + (m.pct ? ' ('+m.pct+'%)' : '');
+    });
+
+    // moisture and consistency are deliberately NOT repeated here — the log
+    // gives each its own column, and the reference logs don't duplicate them.
+    if(d.structure) out += '; ' + d.structure.toLowerCase();
+    if(d.cementation) out += '; ' + d.cementation.toLowerCase();
+    // the group symbol prints in the Classification column only, never here
+    out = out.trim();
+    if(out && out.slice(-1) !== '.') out += '.';
+    return out;
+  }
+  function buildRockDescription(iv){
+    var r = iv.rock || {};
+    var out = '';
+    if(r.duricrustGrade && r.duricrustName) out += r.duricrustName + ' (' + r.duricrustGrade + ')';
+    else if(r.name) out += r.name;
+    var bits = [];
+    var col = [(iv.d||{}).colourMod, (iv.d||{}).colour].filter(Boolean).join(' ');
+    if((iv.d||{}).colour2) col = col + (col?'-':'') + (iv.d||{}).colour2;
+    if(col) bits.push(col);
+    var wp=weatheringPhrase(r.weathering, r.weatheringTo);
+    if(wp) bits.push(wp);
+    var sp=strengthPhrase(r.strength, r.strengthTo);
+    if(sp) bits.push(sp);
+    if(r.defects) bits.push(r.defects);
+    if(bits.length) out += (out?': ':'') + bits.join('; ');
+    out = out.trim();
+    if(out && out.slice(-1) !== '.') out += '.';
+    return out;
+  }
+  function joinRange(a,b){
+    if(a && b && a!==b) return a + '-' + b;
+    return a || b || '';
+  }
+  /* ---- descriptions are written out in full, never as field shorthand:
+     f/m -> "fine to medium grained", SA-SR -> "subangular to subrounded",
+     LP/MP -> "low to medium plasticity" ---- */
+  function wordFor(list, code, idx){
+    if(!code) return '';
+    for(var i=0;i<list.length;i++) if(list[i][0]===code) return list[i][idx||1];
+    return code;
+  }
+  function sizePhrase(a,b){
+    var wa=wordFor(AS.sizes,a), wb=wordFor(AS.sizes,b);
+    if(wa && wb && wa!==wb) return wa+' to '+wb+' grained';
+    var w=wa||wb;
+    return w ? w+' grained' : '';
+  }
+  function angPhrase(a,b){
+    var wa=wordFor(AS.angularity,a), wb=wordFor(AS.angularity,b);
+    if(wa && wb && wa!==wb) return wa+' to '+wb;
+    return wa||wb||'';
+  }
+  // Dual symbols (AS 1726 Table 9 note 2 — e.g. fines 5-12% gives GP-GM)
+  function classSymbol(d){
+    if(!d) return '';
+    if(d.classification && d.classificationTo && d.classification!==d.classificationTo)
+      return d.classification+'-'+d.classificationTo;
+    return d.classification||d.classificationTo||'';
+  }
+  /* Suggests a group symbol only where AS 1726 makes it determinate from what
+     has been described. Well/poorly graded (W vs P) needs a PSD, so those are
+     never guessed — the field is left for the logger to set. */
+  function suggestClassification(d){
+    if(!d || !d.name) return '';
+    var n=d.name.toUpperCase(), sec=(d.secondary||'').toUpperCase(),
+        p=(d.plasticity||'').toUpperCase();
+    if(n==='PEAT') return 'Pt';
+    if(n==='SAND'){ if(sec==='CLAYEY') return 'SC'; if(sec==='SILTY') return 'SM'; return ''; }
+    if(n==='GRAVEL'){ if(sec==='CLAYEY') return 'GC'; if(sec==='SILTY') return 'GM'; return ''; }
+    if(n==='CLAY'){ if(p==='LP') return 'CL'; if(p==='MP') return 'CI'; if(p==='HP') return 'CH'; return ''; }
+    if(n==='SILT'){ if(p==='LP'||p==='NP') return 'ML'; if(p==='HP') return 'MH'; return ''; }
+    return '';
+  }
+  /* ---- ranges: "Easy to Firm", "Moderately to Slightly Weathered",
+     "Medium to High strength" ---- */
+  function rangePhrase(a,b){
+    if(a && b && a!==b) return a+' to '+b;
+    return a||b||'';
+  }
+  function excavationPhrase(iv){ return rangePhrase(iv.excavation, iv.excavationTo); }
+  function weatheringPhrase(a,b){
+    var wa=weatheringWord(a), wb=weatheringWord(b);
+    if(!wa || !wb || wa===wb) return wa||wb||'';
+    if(/ Weathered$$/.test(wa) && / Weathered$$/.test(wb))
+      return wa.replace(/ Weathered$$/,'')+' to '+wb;
+    return wa+' to '+wb;
+  }
+  function strengthPhrase(a,b){
+    var wa=strengthWord(a), wb=strengthWord(b);
+    var core=(wa && wb && wa!==wb) ? wa+' to '+wb : (wa||wb||'');
+    return core ? core+' strength' : '';
+  }
+  // Plasticity describes fines; grain size and angularity describe coarse
+  // fractions. Which applies depends on the soil chosen, for the primary
+  // name and the secondary prefix independently.
+  function isFineName(n){ return n==='CLAY' || n==='SILT'; }
+  function isFineSec(s){ return s==='Clayey' || s==='Silty'; }
+  function secondaryNoun(s){
+    return s==='Clayey' ? 'Clay' : s==='Silty' ? 'Silt'
+         : s==='Sandy'  ? 'Sand' : s==='Gravelly' ? 'Gravel' : 'Fines';
+  }
+  function plasticityPhrase(a,b){
+    var wa=wordFor(AS.plasticity,a,2), wb=wordFor(AS.plasticity,b,2);
+    if(wa==='non-plastic' || wb==='non-plastic') return 'non-plastic';
+    if(wa && wb && wa!==wb) return wa+' to '+wb+' plasticity';
+    var w=wa||wb;
+    return w ? w+' plasticity' : '';
+  }
+  function lookupWord(list, code){
+    for(var i=0;i<list.length;i++){ if(list[i][0]===code) return String(list[i][1]).split(' —')[0].split(' (')[0]; }
+    return code;
+  }
+  function consistencyWord(c){
+    var w = lookupWord(AS.consistency, c);
+    if(w===c) w = lookupWord(AS.density, c);
+    return w;
+  }
+  function weatheringWord(c){ return lookupWord(AS.weathering, c); }
+  function strengthWord(c){ return lookupWord(AS.rockStrength, c); }
+
+  /* ---------- SPT N per AS 1289.6.3.1 ---------- */
+  function sptResult(spt){
+    if(!spt) return '';
+    if(spt.code==='rw') return 'rw, N < 1';
+    if(spt.code==='hw') return 'hw, N < 1';
+    if(spt.code==='hb') return 'hb — hammer bouncing, test discontinued, N not reported';
+    if(spt.code==='disc') return 'Test discontinued (30 blows < 100 mm), N not reported';
+    var a = parseInt(spt.i1,10), b = parseInt(spt.i2,10), c = parseInt(spt.i3,10);
+    if(!isNaN(b) && !isNaN(c)) return 'N = ' + (b + c);
+    return '';
+  }
+
+  /* ============================================================ state
+     PROJECTS holds every job; STATE is bound to the active one, so all the
+     editing/render code below works against a single project unchanged. */
+  var PROJECTS = {};   // id -> {project, boreholes, dcp, photos, updatedAt}
+  var ACTIVE = null;   // active project id
+  var STATE = null;    // === PROJECTS[ACTIVE]
+  var db=null, dbSaveTimer=null, downloads=null, currentDeck='site';
+  var photoThumbs = {}; // local-only previews, never persisted
+
+  function blankProjectRecord(name){
+    return {project:{client:'',projectName:name||'',jobNumber:'',location:'',fieldEngineer:'',date:''},
+            boreholes:[], dcp:[], photos:[],
+            settings:{pdfScale:1, autoDensity:true}, updatedAt:Date.now()};
+  }
+  function bindActive(){
+    if(!ACTIVE || !PROJECTS[ACTIVE]){
+      var ids=Object.keys(PROJECTS);
+      ACTIVE = ids.length ? ids[0] : null;
+    }
+    if(!ACTIVE){ ACTIVE=uid('p'); PROJECTS[ACTIVE]=blankProjectRecord(''); }
+    STATE = PROJECTS[ACTIVE];
+    try{ localStorage.setItem('fieldwork_logger_active', ACTIVE); }catch(e){}
+  }
+  function projectLabel(p){
+    return (p.project.projectName || p.project.jobNumber || 'Untitled project');
+  }
+
+  function uid(p){ return (p||'id')+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function pad2(n){ n=parseInt(n,10)||0; return n<10?'0'+n:''+n; }
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function csvCell(s){ s=(s==null?'':String(s));
+    if(/[",\n]/.test(s)) s='"'+s.replace(/"/g,'""')+'"'; return s; }
+
+  function blankInterval(){
+    return {id:uid('iv'), from:'', to:'', excavation:'', excavationTo:'', groundwater:'',
+      d:{origin:'',secondary:'',name:'',secondaryPct:'',sizeFrom:'',sizeTo:'',angFrom:'',angTo:'',
+         colourMod:'',colour:'',colour2:'',plasticity:'',plasticityTo:'',minors:[],
+         plasPrimaryFrom:'',plasPrimaryTo:'',secSizeFrom:'',secSizeTo:'',secAngFrom:'',secAngTo:'',
+         structure:'',cementation:'',classification:'',classificationTo:''},
+      isRock:false,
+      rock:{name:'',duricrustName:'',duricrustGrade:'',weathering:'',weatheringTo:'',strength:'',strengthTo:'',defects:''},
+      moisture:'', fineMoisture:false, consistency:'',
+      description:'', descManual:false,
+      samples:[], spt:null, pp:'', dcpInline:'',
+      comments:'', flag:false, flagNote:''};
+  }
+  function blankBorehole(id){
+    return {id:id, drillingMethod:'', drillDiameter:'', flushingFluid:'None', inclination:'Vertical',
+      coordE:'', coordN:'', rl:'', operator:'', loggedBy:'', comments:'',
+      terminationDepth:'', terminationReason:'', terminationOther:'', sheetDepth:'', checkedBy:'', checkDate:'',
+      gwEncountered:false, gwDepth:'',
+      intervals:[blankInterval()], observations:[], remarks:[], flag:false, flagNote:''};
+  }
+  function blankDcp(id){
+    return {id:id, boreholeId:'', engineer:'', reviewed:'', testDate:'', reviewDate:'', soilType:'SAND',
+      readings:[{blows:'set',soil:''}], refusalType:'', refusalNote:'', flag:false, flagNote:''};
+  }
+  function blankPhoto(deck){
+    return {id:uid('ph'), deck:deck, filename:'', caption:'', direction:'', boreholeId:'',
+      depthFrom:'', depthTo:'', tray:'', flag:false, flagNote:''};
+  }
+
+  // migrate older saved shapes forward
+  function normalizeDcp(d){
+    d.readings = (d.readings||[]).map(function(r){
+      if(r && typeof r==='object') return {blows:r.blows!=null?r.blows:'', soil:r.soil||''};
+      return {blows:r!=null?r:'', soil:''};
+    });
+    return d;
+  }
+  function normalizeInterval(iv){
+    var base = blankInterval();
+    base.id = iv.id || base.id;
+    ['from','to','excavation','excavationTo','groundwater','moisture','consistency','description','comments','flagNote','pp','dcpInline']
+      .forEach(function(k){ if(iv[k]!=null) base[k]=iv[k]; });
+    base.flag = !!iv.flag;
+    base.descManual = iv.descManual!=null ? !!iv.descManual : !!(iv.description && !iv.d);
+    base.isRock = !!iv.isRock;
+    base.fineMoisture = !!iv.fineMoisture;
+    if(iv.d) base.d = Object.assign(base.d, iv.d);
+    if(!base.d.minors) base.d.minors = [];
+    if(iv.classification && !base.d.classification) base.d.classification = iv.classification;
+    if(iv.rock) base.rock = Object.assign(base.rock, iv.rock);
+    // legacy single value that already spanned a range
+    if(base.excavation==='Firm to Hard'){ base.excavation='Firm'; base.excavationTo='Hard'; }
+    base.samples = iv.samples || [];
+    base.spt = iv.spt || null;
+    return base;
+  }
+  function normalizeBorehole(b){
+    b.intervals = (b.intervals||[]).map(normalizeInterval);
+    if(!b.intervals.length) b.intervals = [blankInterval()];
+    b.observations = b.observations||[];
+    b.remarks = b.remarks||[];
+    return b;
+  }
+  function mergeState(remote){
+    return {
+      project: Object.assign({client:'',projectName:'',jobNumber:'',location:'',fieldEngineer:'',date:''}, remote.project||{}),
+      boreholes: (remote.boreholes||[]).map(normalizeBorehole),
+      dcp: (remote.dcp||[]).map(normalizeDcp),
+      photos: remote.photos||[],
+      settings: Object.assign({pdfScale:1, autoDensity:true}, remote.settings||{}),
+      updatedAt: remote.updatedAt||0
+    };
+  }
+
+  /* ============================================================ persistence */
+  function localSave(){
+    try{
+      localStorage.setItem('fieldwork_logger_projects', JSON.stringify(PROJECTS));
+      localStorage.setItem('fieldwork_logger_active', ACTIVE||'');
+    }catch(e){}
+  }
+  function localLoad(){
+    var out=null;
+    try{
+      var raw=localStorage.getItem('fieldwork_logger_projects');
+      if(raw) out=JSON.parse(raw);
+      if(!out){
+        // migrate the single-project cache written by earlier versions
+        var legacy=localStorage.getItem('fieldwork_logger_state');
+        if(legacy){ out={}; out[uid('p')]=JSON.parse(legacy); }
+      }
+      var a=localStorage.getItem('fieldwork_logger_active');
+      if(a) ACTIVE=a;
+    }catch(e){}
+    return out;
+  }
+  function setSyncState(s){
+    var dot=document.getElementById('syncDot'); if(!dot) return;
+    dot.dataset.state=s;
+    dot.title = s==='synced' ? 'Synced to shared record' : 'Saved on this device only';
+  }
+  var pendingSave=false, warnedSync=false;
+  function overlayOpen(){
+    var a=document.getElementById('bhOverlay'), b2=document.getElementById('dcpOverlay');
+    return (a && !a.hidden) || (b2 && !b2.hidden);
+  }
+  // Say so once rather than silently dropping back to device-only storage.
+  function syncProblem(code){
+    if(warnedSync) return;
+    warnedSync=true;
+    toast(code==='not_granted' || code==='unavailable'
+      ? 'Not syncing here - changes are saved on this device only'
+      : 'Sync problem ('+code+') - changes saved on this device only');
+  }
+  function save(){
+    if(STATE) STATE.updatedAt=Date.now();
+    localSave();
+    if(!db || !ACTIVE){ setSyncState('local'); return; }
+    pendingSave=true;
+    clearTimeout(dbSaveTimer);
+    var id=ACTIVE;
+    dbSaveTimer=setTimeout(function(){
+      db.collection('projects').doc(id).set(PROJECTS[id])
+        .then(function(){ pendingSave=false; setSyncState('synced'); })
+        .catch(function(err){
+          pendingSave=false; setSyncState('local');
+          syncProblem(err && err.code ? err.code : 'unavailable');
+        });
+    },500);
+  }
+  // Write straight away rather than waiting out the debounce - a phone can be
+  // backgrounded or locked mid-edit and the pending write would never fire.
+  function flushSave(){
+    if(!db || !ACTIVE || !PROJECTS[ACTIVE]) { localSave(); return; }
+    clearTimeout(dbSaveTimer);
+    var id=ACTIVE;
+    db.collection('projects').doc(id).set(PROJECTS[id])
+      .then(function(){ pendingSave=false; setSyncState('synced'); })
+      .catch(function(err){
+        pendingSave=false; setSyncState('local');
+        syncProblem(err && err.code ? err.code : 'unavailable');
+      });
+  }
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='hidden') flushSave();
+  });
+  window.addEventListener('pagehide', flushSave);
+  function migrateLegacyDoc(){
+    db.doc('field/state').get().then(function(snap){
+      if(!snap.exists) return;
+      var old=snap.data();
+      if(!old || (!old.project && !old.boreholes)) return;
+      var already=Object.keys(PROJECTS).some(function(id){
+        return JSON.stringify(PROJECTS[id].project)===JSON.stringify(old.project);
+      });
+      if(already) return;
+      var id=uid('p');
+      PROJECTS[id]=mergeState(old);
+      db.collection('projects').doc(id).set(PROJECTS[id]).then(function(){
+        db.doc('field/state').delete().catch(function(){});
+      }).catch(function(){});
+      bindActive(); renderAll();
+    }).catch(function(){});
+  }
+  function initCaps(){
+    if(!window.claude || !window.claude.use){ setSyncState('local'); return; }
+    window.claude.use('db').then(function(ns){
+      db=ns;
+      if(!db){ setSyncState('local'); return; }
+      migrateLegacyDoc();
+      db.collection('projects').onSnapshot(function(qs){
+        var incoming={};
+        qs.docs.forEach(function(doc){ incoming[doc.id]=mergeState(doc.data()||{}); });
+        // keep any project created on this device that has not been written yet
+        Object.keys(PROJECTS).forEach(function(id){ if(!incoming[id]) incoming[id]=PROJECTS[id]; });
+        /* Never swap the project being worked on out from under the UI. An open
+           borehole or DCP form holds a direct reference to its record, so
+           replacing the object would leave the form editing a detached copy and
+           every change would be silently lost. Keep ours unless the incoming
+           copy is genuinely newer and nothing is being edited. */
+        var mine=PROJECTS[ACTIVE], theirs=incoming[ACTIVE];
+        var busy = pendingSave || overlayOpen();
+        if(ACTIVE && mine && (busy || !theirs || (theirs.updatedAt||0) <= (mine.updatedAt||0)))
+          incoming[ACTIVE]=mine;
+        if(JSON.stringify(incoming)!==JSON.stringify(PROJECTS)){
+          PROJECTS=incoming; bindActive(); renderAll();
+        }
+        setSyncState('synced');
+      }, function(e){
+        setSyncState('local');
+        syncProblem(e && e.code ? e.code : 'unavailable');
+      });
+      // push anything that exists only on this device
+      Object.keys(PROJECTS).forEach(function(id){
+        db.collection('projects').doc(id).get().then(function(s){
+          if(!s.exists) db.collection('projects').doc(id).set(PROJECTS[id]).catch(function(){});
+        }).catch(function(){});
+      });
+    }).catch(function(){ setSyncState('local'); });
+    window.claude.use('downloads').then(function(ns){ downloads=ns; }).catch(function(){ downloads=null; });
+  }
+
+  /* ---------- project switcher ---------- */
+  function openProjectSheet(){ renderProjectSheet(); document.getElementById('projOverlay').hidden=false; }
+  function switchProject(id){
+    if(!PROJECTS[id]) return;
+    ACTIVE=id; bindActive(); closeOverlays(); renderAll();
+    toast('Switched to '+projectLabel(PROJECTS[id]));
+  }
+  function renderProjectSheet(){
+    var host=document.getElementById('projectSheetBody'); if(!host) return;
+    var ids=Object.keys(PROJECTS).sort(function(a,b){
+      return (PROJECTS[b].updatedAt||0)-(PROJECTS[a].updatedAt||0);
+    });
+    host.innerHTML=ids.map(function(id){
+      var p=PROJECTS[id];
+      var sub=[p.project.jobNumber,p.project.client].filter(Boolean).join(' · ')||'no job number yet';
+      var counts=p.boreholes.length+' BH · '+p.dcp.length+' DCP · '+p.photos.length+' photos';
+      var isActive=(id===ACTIVE);
+      return '<div class="card" style="margin-bottom:10px;'+(isActive?'border-color:var(--accent);':'')+'">'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<div style="min-width:0;flex:1;">'+
+            '<div style="font-weight:600;">'+esc(projectLabel(p))+
+              (isActive?' <span style="color:var(--accent);font-size:.7rem;">● open</span>':'')+'</div>'+
+            '<div class="helptext">'+esc(sub)+'</div>'+
+            '<div class="helptext mono">'+esc(counts)+'</div>'+
+          '</div>'+
+          (isActive?'':'<button class="btn small primary" data-open-proj="'+id+'">Open</button>')+
+        '</div>'+
+        '<div class="btn-row" style="margin-top:8px;">'+
+          '<button class="btn small" data-dup-proj="'+id+'">Duplicate</button>'+
+          '<button class="btn small danger" data-del-proj="'+id+'">Delete</button>'+
+        '</div></div>';
+    }).join('');
+
+    host.querySelectorAll('[data-open-proj]').forEach(function(el){
+      el.addEventListener('click',function(){ switchProject(el.dataset.openProj); });
+    });
+    host.querySelectorAll('[data-dup-proj]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var src=PROJECTS[el.dataset.dupProj];
+        var copy=JSON.parse(JSON.stringify(src));
+        copy.project.projectName=(copy.project.projectName||'Untitled')+' (copy)';
+        copy.updatedAt=Date.now();
+        var nid=uid('p'); PROJECTS[nid]=copy;
+        ACTIVE=nid; bindActive(); save(); renderAll(); renderProjectSheet();
+        toast('Duplicated');
+      });
+    });
+    host.querySelectorAll('[data-del-proj]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var id=el.dataset.delProj, p=PROJECTS[id];
+        if(!confirm('Delete "'+projectLabel(p)+'" and all its boreholes, DCP tests and photos? This cannot be undone.')) return;
+        delete PROJECTS[id];
+        if(db) db.collection('projects').doc(id).delete().catch(function(){});
+        if(ACTIVE===id) ACTIVE=null;
+        bindActive(); localSave(); renderAll(); renderProjectSheet();
+        toast('Project deleted');
+      });
+    });
+  }
+  document.getElementById('projectSwitchBtn').addEventListener('click',openProjectSheet);
+  function startNewProject(){
+    var nid=uid('p');
+    PROJECTS[nid]=blankProjectRecord('');
+    ACTIVE=nid; bindActive(); save(); closeOverlays(); renderAll(); showTab('setup');
+    toast('New project started - fill in the details');
+  }
+  document.getElementById('newProjectBtn').addEventListener('click',startNewProject);
+  document.getElementById('newProjectBtn2').addEventListener('click',startNewProject);
+  document.getElementById('switchProjectBtn').addEventListener('click',openProjectSheet);
+
+  /* ============================================================ chrome */
+  var toastEl=document.getElementById('toast'), toastTimer;
+  function toast(m){ toastEl.textContent=m; toastEl.classList.add('show');
+    clearTimeout(toastTimer); toastTimer=setTimeout(function(){ toastEl.classList.remove('show'); },2200); }
+
+  var tabs=document.querySelectorAll('nav.tabbar button[data-tab]');
+  tabs.forEach(function(b){ b.addEventListener('click',function(){ showTab(b.dataset.tab); }); });
+  function showTab(name){
+    document.querySelectorAll('.view').forEach(function(v){ v.hidden=true; });
+    var el=document.getElementById('view-'+name); if(!el){ name='setup'; el=document.getElementById('view-setup'); }
+    el.hidden=false;
+    tabs.forEach(function(b){ b.setAttribute('aria-current', b.dataset.tab===name?'true':'false'); });
+    try{ localStorage.setItem('fieldwork_logger_tab',name); }catch(e){}
+    if(name==='export') renderExport();
+    if(name==='ref') renderRef();
+  }
+  function renderHeader(){
+    document.getElementById('hdrProject').textContent = STATE.project.projectName || 'New project';
+    var bits=[];
+    if(STATE.project.jobNumber) bits.push(STATE.project.jobNumber);
+    if(STATE.project.client) bits.push(STATE.project.client);
+    document.getElementById('hdrJob').textContent = bits.length ? bits.join(' · ') : 'Set up a job to begin';
+  }
+
+  /* ============================================================ setup */
+  var setupFields={pClient:'client',pProject:'projectName',pJob:'jobNumber',
+    pLocation:'location',pEngineer:'fieldEngineer',pDate:'date'};
+  Object.keys(setupFields).forEach(function(id){
+    var el=document.getElementById(id);
+    el.addEventListener('input',function(){ STATE.project[setupFields[id]]=el.value; renderHeader(); save(); });
+  });
+  function renderSetup(){
+    Object.keys(setupFields).forEach(function(id){
+      document.getElementById(id).value = STATE.project[setupFields[id]]||'';
+    });
+    var line=document.getElementById('currentProjectLine');
+    if(line){
+      var n=Object.keys(PROJECTS).length;
+      line.innerHTML='<strong>'+esc(projectLabel(STATE))+'</strong>'+
+        ' &middot; '+STATE.boreholes.length+' BH &middot; '+STATE.dcp.length+' DCP &middot; '+
+        STATE.photos.length+' photos<br>'+n+' project'+(n===1?'':'s')+' saved on this device';
+    }
+  }
+  document.getElementById('genBoreholes').addEventListener('click',function(){
+    var prefix=(document.getElementById('bhPrefix').value||'BH').trim();
+    var n=parseInt(document.getElementById('bhCount').value,10)||0;
+    if(n<=0){ toast('Enter how many boreholes first'); return; }
+    var added=0;
+    for(var i=1;i<=n;i++){
+      var id=prefix+pad2(i);
+      if(!STATE.boreholes.some(function(b){return b.id===id;})){ STATE.boreholes.push(blankBorehole(id)); added++; }
+    }
+    save(); renderBoreholeList();
+    toast(added?('Added '+added+' borehole'+(added===1?'':'s')):'Those IDs already exist');
+  });
+  document.getElementById('genDcp').addEventListener('click',function(){
+    var prefix=(document.getElementById('dcpPrefix').value||'DCP').trim();
+    var n=parseInt(document.getElementById('dcpCount').value,10)||0;
+    if(n<=0){ toast('Enter how many DCP tests first'); return; }
+    var added=0;
+    for(var i=1;i<=n;i++){
+      var id=prefix+pad2(i);
+      if(!STATE.dcp.some(function(d){return d.id===id;})){ STATE.dcp.push(blankDcp(id)); added++; }
+    }
+    save(); renderDcpList();
+    toast(added?('Added '+added+' DCP test'+(added===1?'':'s')):'Those IDs already exist');
+  });
+
+  /* ============================================================ boreholes list */
+  function bhFlagged(b){ return b.flag || b.intervals.some(function(iv){return iv.flag;}); }
+  function renderBoreholeList(){
+    var host=document.getElementById('boreholeList');
+    if(!STATE.boreholes.length){
+      host.innerHTML='<div class="empty-note">No boreholes yet. Generate a list from Setup, or add one here.</div>'; return;
+    }
+    host.innerHTML = STATE.boreholes.map(function(b,i){
+      var depth = b.terminationDepth ? b.terminationDepth+' m' : 'no depth yet';
+      var n = b.intervals.filter(function(iv){ return iv.description || iv.d.name; }).length;
+      return '<div class="list-row"><button class="list-item" data-open-bh="'+esc(b.id)+'">'+
+        '<span class="id">'+esc(b.id)+'</span>'+
+        '<span class="sub">'+esc(depth)+' · '+n+' interval'+(n===1?'':'s')+'</span>'+
+        (bhFlagged(b)?'<span class="flagdot" title="Flagged"></span>':'')+
+        '<span class="chev">&rsaquo;</span></button>'+
+        '<div class="movecol">'+
+          '<button class="btn small ghost" data-move-bh="'+i+'" data-dir="-1" title="Move up">&#9650;</button>'+
+          '<button class="btn small ghost" data-move-bh="'+i+'" data-dir="1" title="Move down">&#9660;</button>'+
+        '</div></div>';
+    }).join('');
+    host.querySelectorAll('[data-move-bh]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var i=parseInt(el.dataset.moveBh,10), j=i+parseInt(el.dataset.dir,10);
+        if(j<0 || j>=STATE.boreholes.length) return;
+        var t=STATE.boreholes[i]; STATE.boreholes[i]=STATE.boreholes[j]; STATE.boreholes[j]=t;
+        save(); renderBoreholeList();
+      });
+    });
+    host.querySelectorAll('[data-open-bh]').forEach(function(el){
+      el.addEventListener('click',function(){ openBorehole(el.dataset.openBh); });
+    });
+  }
+  document.getElementById('addBorehole').addEventListener('click',function(){
+    var n=STATE.boreholes.length+1, id='BH'+pad2(n);
+    while(STATE.boreholes.some(function(b){return b.id===id;})){ n++; id='BH'+pad2(n); }
+    STATE.boreholes.push(blankBorehole(id)); save(); renderBoreholeList(); openBorehole(id);
+  });
+
+  /* ============================================================ borehole detail */
+  var terminationOpts=['','Target depth reached','Refusal on rock','Refusal on duricrust / cemented material',
+                       'Refusal on hard soil','Collapse','Other'];
+
+  function openBorehole(id){
+    var b=STATE.boreholes.find(function(x){return x.id===id;});
+    if(!b) return;
+    document.getElementById('bhOverlayTitle').textContent=b.id;
+    renderBoreholeDetail(b);
+    document.getElementById('bhOverlay').hidden=false;
+    document.getElementById('bhPdf').onclick=function(){
+      exportLogPdf([b], (b.id||'borehole')+'_log.pdf');
+    };
+    document.getElementById('bhDelete').onclick=function(){
+      if(confirm('Delete '+b.id+'? This removes all its intervals.')){
+        STATE.boreholes=STATE.boreholes.filter(function(x){return x.id!==id;});
+        save(); renderBoreholeList(); closeOverlays(); toast(b.id+' deleted');
+      }
+    };
+  }
+
+  // Depth-linked notes: an entry pinned to a depth that does NOT start a new
+  // stratum (observations) or a separate dated record (comments).
+  function depthRows(list, kind){
+    return (list||[]).map(function(x,i){
+      return '<div class="row" data-dn="'+kind+'" data-di="'+i+'">'+
+        '<label class="field" style="flex:0 0 5.6em;"><span>Depth (m)</span>'+
+          '<input class="mono" inputmode="decimal" data-dnf="depth" value="'+esc(x.depth||'')+'"></label>'+
+        '<label class="field"><span>Text</span>'+
+          '<input data-dnf="text" value="'+esc(x.text||'')+'"></label>'+
+        '<button class="btn small ghost" data-dn-del="1" style="margin-bottom:12px;">X</button></div>';
+    }).join('');
+  }
+  function renderBoreholeDetail(b){
+    var host=document.getElementById('bhOverlayBody');
+    var h='';
+    h+='<label class="field"><span>Borehole ID</span><input class="mono" data-bh="id" value="'+esc(b.id)+'"></label>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Drilling method (rig)</span><input data-bh="drillingMethod" value="'+esc(b.drillingMethod)+'" placeholder="Window sampler / Hand auger"></label>'+
+       '<label class="field"><span>Diameter</span><input data-bh="drillDiameter" value="'+esc(b.drillDiameter)+'" placeholder="60 mm"></label></div>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Flushing fluid</span><input data-bh="flushingFluid" value="'+esc(b.flushingFluid)+'"></label>'+
+       '<label class="field"><span>Inclination</span><input data-bh="inclination" value="'+esc(b.inclination)+'"></label></div>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Easting</span><input class="mono" inputmode="decimal" data-bh="coordE" value="'+esc(b.coordE)+'"></label>'+
+       '<label class="field"><span>Northing</span><input class="mono" inputmode="decimal" data-bh="coordN" value="'+esc(b.coordN)+'"></label>'+
+       '<label class="field"><span>RL (m)</span><input class="mono" inputmode="decimal" data-bh="rl" value="'+esc(b.rl)+'"></label></div>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Operator</span><input data-bh="operator" value="'+esc(b.operator)+'"></label>'+
+       '<label class="field"><span>Logged by</span><input data-bh="loggedBy" value="'+esc(b.loggedBy)+'"></label></div>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Checked by</span><input data-bh="checkedBy" value="'+esc(b.checkedBy||'')+'" placeholder="initials"></label>'+
+       '<label class="field"><span>Check date</span><input data-bh="checkDate" value="'+esc(b.checkDate||'')+'" placeholder="dd/mm/yyyy"></label></div>';
+    h+='<label class="field"><span>Comments</span><input data-bh="comments" value="'+esc(b.comments)+'" placeholder="access notes, vehicle onsite…"></label>';
+
+    h+='<hr class="sep"><h2 style="margin:10px 0;">Strata intervals</h2>';
+    h+='<div id="intervalHost"></div>';
+    h+='<button class="btn block" id="addInterval">+ Add interval</button>';
+
+    h+='<hr class="sep"><h2 style="margin:10px 0;">Observations at depth</h2>';
+    h+='<p class="helptext" style="margin-bottom:8px;">Noted at a depth without starting a new stratum, e.g. &ldquo;At 3.2m encountered dry rock.&rdquo; Prints in the Material Description column at that depth; soil properties are untouched.</p>';
+    h+='<div id="obsHost">'+depthRows(b.observations,'obs')+'</div>';
+    h+='<button class="btn block" id="addObs">+ Add observation</button>';
+    h+='<hr class="sep"><h2 style="margin:10px 0;">Field records / comments at depth</h2>';
+    h+='<p class="helptext" style="margin-bottom:8px;">As many as you need, each pinned to its own depth - samples taken, seepage, rig notes.</p>';
+    h+='<div id="remHost">'+depthRows(b.remarks,'rem')+'</div>';
+    h+='<button class="btn block" id="addRem">+ Add comment</button>';
+    h+='<hr class="sep"><h2 style="margin:10px 0;">End of borehole</h2>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Termination depth (m)</span><input class="mono" inputmode="decimal" data-bh="terminationDepth" value="'+esc(b.terminationDepth)+'"></label>'+
+              '<label class="field"><span>Reason</span><select data-bh="terminationReason">'+optList(terminationOpts,b.terminationReason)+'</select></label></div>';
+    h+='<label class="field"><span>Log sheet depth (m) - leave blank to fit the hole automatically</span>'+
+       '<input class="mono" inputmode="decimal" data-bh="sheetDepth" value="'+esc(b.sheetDepth||'')+'" placeholder="auto: '+sheetDepthFor(b)+' m"></label>';
+    if(b.terminationReason==='Other'){
+      h+='<label class="field"><span>Other — describe</span><input data-bh="terminationOther" value="'+esc(b.terminationOther)+'"></label>';
+    }
+    h+='<div class="toggle-line"><input type="checkbox" id="gwChk" '+(b.gwEncountered?'checked':'')+'>'+
+       '<span>Groundwater encountered</span></div>';
+    h+= b.gwEncountered
+      ? '<label class="field"><span>Groundwater depth (m)</span><input class="mono" inputmode="decimal" data-bh="gwDepth" value="'+esc(b.gwDepth)+'"></label>'
+      : '<p class="helptext">Logged as GNE — groundwater not encountered.</p>';
+
+    h+='<div class="flagline" style="margin-top:14px;"><input type="checkbox" id="bhFlag" '+(b.flag?'checked':'')+'>'+
+       '<label for="bhFlag">🚩 Flag this borehole for office review</label></div>';
+    if(b.flag) h+='<label class="field" style="margin-top:6px;"><span>Note for reviewer</span><textarea data-bh="flagNote">'+esc(b.flagNote)+'</textarea></label>';
+
+    host.innerHTML=h;
+
+    host.querySelectorAll('[data-bh]').forEach(function(el){
+      var f=el.dataset.bh, ev=(el.tagName==='SELECT')?'change':'input';
+      el.addEventListener(ev,function(){
+        if(f==='id'){
+          var nid=el.value.trim();
+          if(nid && nid!==b.id && !STATE.boreholes.some(function(x){return x.id===nid;})){
+            b.id=nid; document.getElementById('bhOverlayTitle').textContent=nid;
+          } else if(nid!==b.id){ el.value=b.id; return; }
+        } else { b[f]=el.value; }
+        save(); renderBoreholeList();
+        if(f==='terminationReason') renderBoreholeDetail(b);
+      });
+    });
+    document.getElementById('gwChk').addEventListener('change',function(){
+      b.gwEncountered=this.checked; save(); renderBoreholeDetail(b);
+    });
+    document.getElementById('bhFlag').addEventListener('change',function(){
+      b.flag=this.checked; save(); renderBoreholeDetail(b); renderBoreholeList();
+    });
+    function dnList(kind){ return kind==='obs' ? b.observations : b.remarks; }
+    host.querySelectorAll('[data-dnf]').forEach(function(el){
+      el.addEventListener('input',function(){
+        var w=el.closest('[data-dn]');
+        dnList(w.dataset.dn)[parseInt(w.dataset.di,10)][el.dataset.dnf]=el.value;
+        save();
+      });
+    });
+    host.querySelectorAll('[data-dn-del]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var w=el.closest('[data-dn]');
+        dnList(w.dataset.dn).splice(parseInt(w.dataset.di,10),1);
+        save(); renderBoreholeDetail(b);
+      });
+    });
+    document.getElementById('addObs').addEventListener('click',function(){
+      b.observations.push({depth:'',text:''}); save(); renderBoreholeDetail(b);
+    });
+    document.getElementById('addRem').addEventListener('click',function(){
+      b.remarks.push({depth:'',text:''}); save(); renderBoreholeDetail(b);
+    });
+    document.getElementById('addInterval').addEventListener('click',function(){
+      var last=b.intervals[b.intervals.length-1], iv=blankInterval();
+      if(last && last.to) iv.from=last.to;
+      b.intervals.push(iv); save(); renderIntervals(b);
+    });
+    renderIntervals(b);
+  }
+
+  /* ---------- interval editor ---------- */
+  function renderIntervals(b){
+    var host=document.getElementById('intervalHost');
+    host.innerHTML = b.intervals.map(function(iv,idx){ return intervalHtml(iv,idx); }).join('');
+    wireIntervals(b, host);
+  }
+
+  function intervalHtml(iv, idx){
+    var d = iv.d;
+    var auto = buildDescription(iv);
+    var shown = iv.descManual ? iv.description : auto;
+    var h='<div class="interval'+(iv.flag?' flagged':'')+'" data-iv="'+iv.id+'">';
+    h+='<div class="interval-top"><span class="tag">Interval '+(idx+1)+
+       (iv.from!==''||iv.to!==''?' · '+esc(iv.from||'?')+'–'+esc(iv.to||'?')+' m':'')+'</span>'+
+       '<button class="btn small ghost" data-remove-iv="'+iv.id+'">Remove</button></div>';
+
+    h+='<div class="row">'+
+       '<label class="field"><span>From (m)</span><input class="mono" inputmode="decimal" data-f="from" value="'+esc(iv.from)+'"></label>'+
+       '<label class="field"><span>To (m)</span><input class="mono" inputmode="decimal" data-f="to" value="'+esc(iv.to)+'"></label></div>';
+
+    h+='<div class="toggle-line"><input type="checkbox" data-f="isRock" '+(iv.isRock?'checked':'')+'>'+
+       '<span>Rock / duricrust interval</span></div>';
+
+    if(!iv.isRock){
+      h+='<div class="subblock"><h3>Soil description — AS 1726</h3>';
+      h+='<div class="row">'+
+         '<label class="field"><span>Origin</span><select data-d="origin">'+optList(AS.origins,d.origin)+'</select></label>'+
+         '<label class="field"><span>Secondary</span><select data-d="secondary">'+optList(AS.secondary,d.secondary)+'</select></label>'+
+         '<label class="field"><span>Soil name</span><select data-d="name">'+optList(AS.soilNames,d.name)+'</select></label></div>';
+      var primFine=isFineName(d.name), secFine=isFineSec(d.secondary);
+      if(primFine){
+        h+='<div class="row">'+
+           '<label class="field"><span>'+esc(d.name)+' plasticity</span><select data-d="plasPrimaryFrom">'+optList(AS.plasticity,d.plasPrimaryFrom)+'</select></label>'+
+           '<label class="field"><span>to</span><select data-d="plasPrimaryTo">'+optList(AS.plasticity,d.plasPrimaryTo)+'</select></label></div>';
+        h+='<p class="helptext" style="margin:-4px 0 8px;">A '+esc(d.name)+' is described by plasticity - grain size and angularity apply to sand and gravel, so they are not offered here.</p>';
+      } else {
+        h+='<div class="row">'+
+           '<label class="field"><span>Size from</span><select data-d="sizeFrom">'+optList(AS.sizes,d.sizeFrom)+'</select></label>'+
+           '<label class="field"><span>Size to</span><select data-d="sizeTo">'+optList(AS.sizes,d.sizeTo)+'</select></label>'+
+           '<label class="field"><span>Angularity</span><select data-d="angFrom">'+optList(AS.angularity,d.angFrom)+'</select></label>'+
+           '<label class="field"><span>to</span><select data-d="angTo">'+optList(AS.angularity,d.angTo)+'</select></label></div>';
+      }
+      h+='<div class="row">'+
+         '<label class="field"><span>Colour mod.</span><select data-d="colourMod">'+optList(AS.colourMods,d.colourMod)+'</select></label>'+
+         '<label class="field"><span>Colour</span><select data-d="colour">'+optList(AS.colours,d.colour)+'</select></label>'+
+         '<label class="field"><span>2nd colour</span><select data-d="colour2">'+optList(AS.colours,d.colour2)+'</select></label></div>';
+      if(d.secondary){
+        var secNoun=secondaryNoun(d.secondary);
+        h+='<div class="row">'+
+           '<label class="field"><span>'+esc(secNoun)+' content %</span><input class="mono" data-d="secondaryPct" value="'+esc(d.secondaryPct)+'" placeholder="10-15"></label>'+
+           (secFine
+             ? '<label class="field"><span>'+esc(secNoun)+' plasticity</span><select data-d="plasticity">'+optList(AS.plasticity,d.plasticity)+'</select></label>'+
+               '<label class="field"><span>to</span><select data-d="plasticityTo">'+optList(AS.plasticity,d.plasticityTo)+'</select></label>'
+             : '')+
+           '</div>';
+        if(!secFine){
+          h+='<div class="row">'+
+             '<label class="field"><span>'+esc(secNoun)+' size</span><select data-d="secSizeFrom">'+optList(AS.sizes,d.secSizeFrom)+'</select></label>'+
+             '<label class="field"><span>to</span><select data-d="secSizeTo">'+optList(AS.sizes,d.secSizeTo)+'</select></label>'+
+             '<label class="field"><span>Angularity</span><select data-d="secAngFrom">'+optList(AS.angularity,d.secAngFrom)+'</select></label>'+
+             '<label class="field"><span>to</span><select data-d="secAngTo">'+optList(AS.angularity,d.secAngTo)+'</select></label></div>';
+          h+='<p class="helptext" style="margin:-4px 0 8px;">'+esc(secNoun)+' is a coarse fraction, so it takes grain size and angularity rather than plasticity.</p>';
+        }
+      }
+      h+='<p class="helptext" style="margin:-4px 0 8px;">Coarse soils: fines ≤5% “trace”, &gt;5–12% “with”, &gt;12% prefix silty/clayey. Coarse accessory: ≤15% “trace”, &gt;15–30% “with”, &gt;30% prefix sandy/gravelly.</p>';
+      h+='<div id="minors_'+iv.id+'">'+ (d.minors||[]).map(function(m,mi){
+            return '<div class="row" data-minor="'+mi+'">'+
+              '<label class="field"><span>Minor</span><select data-m="term">'+optList(AS.minorTerms,m.term)+'</select></label>'+
+              '<label class="field"><span>Component</span><select data-m="type">'+optList(AS.minorTypes,m.type)+'</select></label>'+
+              '<label class="field"><span>%</span><input class="mono" data-m="pct" value="'+esc(m.pct||'')+'"></label>'+
+              '<button class="btn small ghost" data-remove-minor="'+mi+'" style="margin-bottom:12px;">✕</button></div>';
+          }).join('') +'</div>';
+      h+='<button class="btn small" data-add-minor="1">+ Minor component</button>';
+      h+='<div class="row" style="margin-top:10px;">'+
+         '<label class="field"><span>Structure</span><select data-d="structure">'+optList(AS.structure,d.structure)+'</select></label>'+
+         '<label class="field"><span>Cementation</span><select data-d="cementation">'+optList(AS.cementation,d.cementation)+'</select></label></div>';
+      h+='<label class="field"><span>Classification - primary group symbol (AS 1726)</span>'+
+         '<select data-d="classification">'+optList(AS.classification,d.classification)+'</select></label>';
+      h+='<label class="field"><span>to - second symbol for a range / dual classification (prints as SP-SC)</span>'+
+         '<select data-d="classificationTo">'+optList(AS.classification,d.classificationTo)+'</select></label>';
+      var sug=suggestClassification(d), cur=classSymbol(d);
+      if(sug && sug!==d.classification){
+        h+='<div class="btn-row" style="margin:-4px 0 10px;">'+
+           '<button class="btn small" data-apply-class="'+sug+'">Use '+sug+' (suggested from your description)</button></div>';
+      } else if(cur){
+        h+='<p class="helptext" style="margin:-4px 0 10px;">Prints as <span class="mono">'+esc(cur)+'</span> in the Classification column.</p>';
+      }
+      h+='</div>';
+
+
+      h+='<p class="helptext" style="margin:-2px 0 8px;">Consistency here is your field assessment. The log\'s final Consistency/Density column is set from the DCP workbook\'s interpreted result in the office.</p>';
+    } else {
+      h+='<div class="subblock"><h3>Rock / duricrust — AS 1726</h3>';
+      h+='<div class="row">'+
+         '<label class="field"><span>Duricrust</span><select data-r="duricrustName">'+optList(AS.duricrustNames,iv.rock.duricrustName)+'</select></label>'+
+         '<label class="field"><span>Grade</span><select data-r="duricrustGrade">'+optList(AS.duricrust,iv.rock.duricrustGrade)+'</select></label></div>';
+      h+='<label class="field"><span>Rock name (if not a duricrust)</span><select data-r="name">'+optList(AS.rockNames,iv.rock.name)+'</select></label>';
+      h+='<div class="row">'+
+                  '<label class="field"><span>Weathering</span><select data-r="weathering">'+optList(AS.weathering,iv.rock.weathering)+'</select></label>'+
+         '<label class="field"><span>to</span><select data-r="weatheringTo">'+optList(AS.weathering,iv.rock.weatheringTo)+'</select></label>'+
+                  '<label class="field"><span>Strength</span><select data-r="strength">'+optList(AS.rockStrength,iv.rock.strength)+'</select></label>'+
+         '<label class="field"><span>to</span><select data-r="strengthTo">'+optList(AS.rockStrength,iv.rock.strengthTo)+'</select></label></div>';
+      h+='<div class="row">'+
+         '<label class="field"><span>Colour mod.</span><select data-d="colourMod">'+optList(AS.colourMods,d.colourMod)+'</select></label>'+
+         '<label class="field"><span>Colour</span><select data-d="colour">'+optList(AS.colours,d.colour)+'</select></label>'+
+         '<label class="field"><span>2nd colour</span><select data-d="colour2">'+optList(AS.colours,d.colour2)+'</select></label></div>';
+      h+='<label class="field"><span>Defects / texture notes</span><input data-r="defects" value="'+esc(iv.rock.defects)+'" placeholder="e.g. fine grained, smooth, well cemented"></label>';
+      h+='<p class="helptext">AS 1726 assigns duricrusts a grade (DI/DII/DIII) instead of a weathering class.</p>';
+      h+='</div>';
+    }
+
+    // Moisture and field consistency apply to rock intervals too - a limestone
+    // is logged dry or moist just as a sand is.
+    h+='<div class="row">'+
+       '<label class="field"><span>Moisture'+(iv.fineMoisture?' (fine-grained)':'')+'</span><select data-f="moisture">'+
+         optList(iv.fineMoisture?AS.moistureFine:AS.moistureCoarse, iv.moisture)+'</select></label>'+
+       '<label class="field"><span>Consistency / density (field)</span><select data-f="consistency">'+
+         optList([['','-']].concat(AS.consistency.slice(1)).concat(AS.density.slice(1)), iv.consistency)+'</select></label></div>';
+    if(!iv.isRock)
+      h+='<div class="toggle-line"><input type="checkbox" data-f="fineMoisture" '+(iv.fineMoisture?'checked':'')+'>'+
+         '<span>Use fine-grained moisture terms (relative to PL/LL)</span></div>';
+
+    h+='<div class="preview"><span class="lbl">Description'+(iv.descManual?' — edited by hand':' — auto from selections')+'</span>'+
+       esc(shown || 'Make selections above, or write it yourself below.')+'</div>';
+    h+='<label class="field"><span>Description (edit freely — yours wins)</span><textarea data-f="description" placeholder="Type here to override the assembled text">'+esc(iv.descManual?iv.description:'')+'</textarea></label>';
+    if(iv.descManual) h+='<button class="btn small ghost" data-reset-desc="1" style="margin-bottom:10px;">↺ Back to auto-assembled</button>';
+
+    h+='<div class="row">'+
+                '<label class="field"><span>Excavation resistance</span><select data-f="excavation">'+optList(AS.excavation,iv.excavation)+'</select></label>'+
+         '<label class="field"><span>to</span><select data-f="excavationTo">'+optList(AS.excavation,iv.excavationTo)+'</select></label>'+
+       '<label class="field"><span>Groundwater</span><input data-f="groundwater" value="'+esc(iv.groundwater)+'" placeholder="GNE / seepage at…"></label></div>';
+
+    h+='<div class="subblock"><h3>Sampling &amp; in situ testing</h3>';
+    h+= (iv.samples||[]).map(function(s,si){
+      return '<div class="row" data-sample="'+si+'">'+
+        '<label class="field"><span>Type</span><select data-s="type">'+optList(AS.sampleTypes,s.type)+'</select></label>'+
+        '<label class="field"><span>From</span><input class="mono" inputmode="decimal" data-s="from" value="'+esc(s.from||'')+'"></label>'+
+        '<label class="field"><span>To</span><input class="mono" inputmode="decimal" data-s="to" value="'+esc(s.to||'')+'"></label>'+
+        '<label class="field"><span>Detail</span><input data-s="detail" value="'+esc(s.detail||'')+'" placeholder="2 kg"></label>'+
+        '<button class="btn small ghost" data-remove-sample="'+si+'" style="margin-bottom:12px;">✕</button></div>';
+    }).join('');
+    h+='<div class="btn-row"><button class="btn small" data-add-sample="1">+ Sample</button>'+
+       (iv.spt?'':'<button class="btn small" data-add-spt="1">+ SPT</button>')+'</div>';
+    if(iv.spt){
+      h+='<div style="margin-top:10px;"><div class="row">'+
+         '<label class="field"><span>1st 150 mm</span><input class="mono" inputmode="numeric" data-spt="i1" value="'+esc(iv.spt.i1||'')+'"></label>'+
+         '<label class="field"><span>2nd</span><input class="mono" inputmode="numeric" data-spt="i2" value="'+esc(iv.spt.i2||'')+'"></label>'+
+         '<label class="field"><span>3rd</span><input class="mono" inputmode="numeric" data-spt="i3" value="'+esc(iv.spt.i3||'')+'"></label></div>'+
+         '<label class="field"><span>Result code (AS 1289.6.3.1)</span><select data-spt="code">'+optList(AS.sptCodes,iv.spt.code||'')+'</select></label>'+
+         '<div class="preview"><span class="lbl">SPT result</span>'+esc(sptResult(iv.spt)||'Enter the three increments.')+'</div>'+
+         '<button class="btn small ghost" data-remove-spt="1">Remove SPT</button></div>';
+    }
+    h+='<div class="row" style="margin-top:10px;">'+
+       '<label class="field"><span>Pocket penetrometer (kPa)</span><input class="mono" inputmode="decimal" data-f="pp" value="'+esc(iv.pp)+'"></label>'+
+       '<label class="field"><span>DCP inline (blows/100mm)</span><input class="mono" data-f="dcpInline" value="'+esc(iv.dcpInline)+'"></label></div>';
+    h+='</div>';
+
+    h+='<label class="field"><span>Field records / comments</span><input data-f="comments" value="'+esc(iv.comments)+'"></label>';
+    h+='<div class="flagline"><input type="checkbox" data-iv-flag="'+iv.id+'" '+(iv.flag?'checked':'')+'>'+
+       '<label>🚩 Flag — illegible / unsure / conflicting</label></div>';
+    if(iv.flag) h+='<label class="field" style="margin-top:6px;"><span>Note</span><input data-f="flagNote" value="'+esc(iv.flagNote)+'"></label>';
+    h+='</div>';
+    return h;
+  }
+
+  function wireIntervals(b, host){
+    function ivOf(el){
+      var wrap = el.closest('[data-iv]');
+      return b.intervals.find(function(x){ return x.id===wrap.dataset.iv; });
+    }
+    function commit(iv, rerender){
+      if(!iv.descManual) iv.description = buildDescription(iv);
+      save(); renderBoreholeList();
+      if(rerender) renderIntervals(b);
+    }
+
+    host.querySelectorAll('[data-f]').forEach(function(el){
+      var f=el.dataset.f;
+      var ev=(el.tagName==='SELECT'||el.type==='checkbox')?'change':'input';
+      el.addEventListener(ev,function(){
+        var iv=ivOf(el);
+        if(el.type==='checkbox'){
+          iv[f]=el.checked;
+          if(f==='fineMoisture') iv.moisture='';
+          commit(iv,true); return;
+        }
+        if(f==='description'){
+          var v=el.value;
+          if(v.trim()===''){ iv.descManual=false; iv.description=buildDescription(iv); commit(iv,true); return; }
+          iv.descManual=true; iv.description=v;
+          var box=el.closest('[data-iv]').querySelector('.preview');
+          if(box) box.innerHTML='<span class="lbl">Description — edited by hand</span>'+esc(v);
+          save(); return;
+        }
+        iv[f]=el.value;
+        commit(iv, f==='moisture'||f==='consistency'||f==='excavation');
+      });
+    });
+
+    host.querySelectorAll('[data-d]').forEach(function(el){
+      el.addEventListener('change',function(){
+        var iv=ivOf(el); iv.d[el.dataset.d]=el.value; commit(iv,true);
+      });
+      if(el.tagName==='INPUT') el.addEventListener('input',function(){
+        var iv=ivOf(el); iv.d[el.dataset.d]=el.value;
+        if(!iv.descManual) iv.description=buildDescription(iv);
+        var box=el.closest('[data-iv]').querySelector('.preview');
+        if(box && !iv.descManual) box.innerHTML='<span class="lbl">Description — auto from selections</span>'+esc(iv.description);
+        save();
+      });
+    });
+
+    host.querySelectorAll('[data-r]').forEach(function(el){
+      el.addEventListener('change',function(){ var iv=ivOf(el); iv.rock[el.dataset.r]=el.value; commit(iv,true); });
+      if(el.tagName==='INPUT') el.addEventListener('input',function(){
+        var iv=ivOf(el); iv.rock[el.dataset.r]=el.value;
+        if(!iv.descManual) iv.description=buildDescription(iv);
+        save();
+      });
+    });
+
+    host.querySelectorAll('[data-apply-class]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var iv=ivOf(el); iv.d.classification=el.dataset.applyClass; commit(iv,true);
+      });
+    });
+    host.querySelectorAll('[data-add-minor]').forEach(function(el){
+      el.addEventListener('click',function(){ var iv=ivOf(el); iv.d.minors.push({term:'trace',type:'',pct:''}); commit(iv,true); });
+    });
+    host.querySelectorAll('[data-remove-minor]').forEach(function(el){
+      el.addEventListener('click',function(){ var iv=ivOf(el); iv.d.minors.splice(parseInt(el.dataset.removeMinor,10),1); commit(iv,true); });
+    });
+    host.querySelectorAll('[data-m]').forEach(function(el){
+      var ev=el.tagName==='SELECT'?'change':'input';
+      el.addEventListener(ev,function(){
+        var iv=ivOf(el), mi=parseInt(el.closest('[data-minor]').dataset.minor,10);
+        iv.d.minors[mi][el.dataset.m]=el.value;
+        commit(iv, el.tagName==='SELECT');
+      });
+    });
+
+    host.querySelectorAll('[data-add-sample]').forEach(function(el){
+      el.addEventListener('click',function(){ var iv=ivOf(el); iv.samples.push({type:'',from:'',to:'',detail:''}); commit(iv,true); });
+    });
+    host.querySelectorAll('[data-remove-sample]').forEach(function(el){
+      el.addEventListener('click',function(){ var iv=ivOf(el); iv.samples.splice(parseInt(el.dataset.removeSample,10),1); commit(iv,true); });
+    });
+    host.querySelectorAll('[data-s]').forEach(function(el){
+      var ev=el.tagName==='SELECT'?'change':'input';
+      el.addEventListener(ev,function(){
+        var iv=ivOf(el), si=parseInt(el.closest('[data-sample]').dataset.sample,10);
+        iv.samples[si][el.dataset.s]=el.value; save();
+      });
+    });
+
+    host.querySelectorAll('[data-add-spt]').forEach(function(el){
+      el.addEventListener('click',function(){ var iv=ivOf(el); iv.spt={i1:'',i2:'',i3:'',code:''}; commit(iv,true); });
+    });
+    host.querySelectorAll('[data-remove-spt]').forEach(function(el){
+      el.addEventListener('click',function(){ var iv=ivOf(el); iv.spt=null; commit(iv,true); });
+    });
+    host.querySelectorAll('[data-spt]').forEach(function(el){
+      var ev=el.tagName==='SELECT'?'change':'input';
+      el.addEventListener(ev,function(){
+        var iv=ivOf(el); iv.spt[el.dataset.spt]=el.value;
+        save();
+        var box=el.closest('.subblock').querySelector('.preview');
+        if(box) box.innerHTML='<span class="lbl">SPT result</span>'+esc(sptResult(iv.spt)||'Enter the three increments.');
+      });
+    });
+
+    host.querySelectorAll('[data-reset-desc]').forEach(function(el){
+      el.addEventListener('click',function(){ var iv=ivOf(el); iv.descManual=false; iv.description=buildDescription(iv); commit(iv,true); });
+    });
+    host.querySelectorAll('[data-iv-flag]').forEach(function(el){
+      el.addEventListener('change',function(){ var iv=ivOf(el); iv.flag=el.checked; commit(iv,true); });
+    });
+    host.querySelectorAll('[data-remove-iv]').forEach(function(el){
+      el.addEventListener('click',function(){
+        b.intervals=b.intervals.filter(function(x){return x.id!==el.dataset.removeIv;});
+        if(!b.intervals.length) b.intervals.push(blankInterval());
+        save(); renderIntervals(b); renderBoreholeList();
+      });
+    });
+  }
+
+  /* ============================================================ DCP */
+  function renderDcpList(){
+    var host=document.getElementById('dcpList');
+    if(!STATE.dcp.length){
+      host.innerHTML='<div class="empty-note">No DCP tests yet. Generate a list from Setup, or add one here.</div>'; return;
+    }
+    host.innerHTML=STATE.dcp.map(function(d,i){
+      var n=d.readings.filter(function(r){ return r.blows!=='' && r.blows!=null; }).length;
+      return '<div class="list-row"><button class="list-item" data-open-dcp="'+esc(d.id)+'">'+
+        '<span class="id">'+esc(d.id)+'</span>'+
+        '<span class="sub">'+esc(d.soilType||'—')+' · '+n+' reading'+(n===1?'':'s')+(d.boreholeId?' · '+esc(d.boreholeId):'')+'</span>'+
+        (d.flag?'<span class="flagdot"></span>':'')+'<span class="chev">&rsaquo;</span></button>'+
+        '<div class="movecol">'+
+          '<button class="btn small ghost" data-move-dcp="'+i+'" data-dir="-1" title="Move up">&#9650;</button>'+
+          '<button class="btn small ghost" data-move-dcp="'+i+'" data-dir="1" title="Move down">&#9660;</button>'+
+        '</div></div>';
+    }).join('');
+    host.querySelectorAll('[data-move-dcp]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var i=parseInt(el.dataset.moveDcp,10), j=i+parseInt(el.dataset.dir,10);
+        if(j<0 || j>=STATE.dcp.length) return;
+        var t=STATE.dcp[i]; STATE.dcp[i]=STATE.dcp[j]; STATE.dcp[j]=t;
+        save(); renderDcpList();
+      });
+    });
+    host.querySelectorAll('[data-open-dcp]').forEach(function(el){
+      el.addEventListener('click',function(){ openDcp(el.dataset.openDcp); });
+    });
+  }
+  document.getElementById('addDcp').addEventListener('click',function(){
+    var n=STATE.dcp.length+1, id='DCP'+pad2(n);
+    while(STATE.dcp.some(function(d){return d.id===id;})){ n++; id='DCP'+pad2(n); }
+    STATE.dcp.push(blankDcp(id)); save(); renderDcpList(); openDcp(id);
+  });
+  function openDcp(id){
+    var d=STATE.dcp.find(function(x){return x.id===id;});
+    if(!d) return;
+    document.getElementById('dcpOverlayTitle').textContent=d.id;
+    renderDcpDetail(d);
+    document.getElementById('dcpOverlay').hidden=false;
+    document.getElementById('dcpPdf').onclick=function(){
+      exportDcpPdf([d], (d.id||'dcp')+'_test.pdf');
+    };
+    document.getElementById('dcpDelete').onclick=function(){
+      if(confirm('Delete '+d.id+'?')){
+        STATE.dcp=STATE.dcp.filter(function(x){return x.id!==id;});
+        save(); renderDcpList(); closeOverlays(); toast(d.id+' deleted');
+      }
+    };
+  }
+  function renderDcpDetail(d){
+    var host=document.getElementById('dcpOverlayBody');
+    var bhOpts=[''].concat(STATE.boreholes.map(function(b){return b.id;}));
+    var h='';
+    h+='<label class="field"><span>Test ID</span><input class="mono" data-dcp="id" value="'+esc(d.id)+'"></label>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Linked borehole</span><select data-dcp="boreholeId">'+optList(bhOpts,d.boreholeId)+'</select></label>'+
+       '<label class="field"><span>Soil type (default)</span><select data-dcp="soilType">'+optList(['SAND','CLAY'],d.soilType)+'</select></label></div>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Engineer (initials)</span><input class="mono" data-dcp="engineer" value="'+esc(d.engineer)+'" placeholder="PF"></label>'+
+       '<label class="field"><span>Test date</span><input data-dcp="testDate" value="'+esc(d.testDate||'')+'" placeholder="dd/mm/yyyy"></label></div>';
+    h+='<div class="row">'+
+       '<label class="field"><span>Reviewed by</span><input class="mono" data-dcp="reviewed" value="'+esc(d.reviewed)+'" placeholder="FG"></label>'+
+       '<label class="field"><span>Review date</span><input data-dcp="reviewDate" value="'+esc(d.reviewDate||'')+'" placeholder="dd/mm/yyyy"></label></div>';
+    h+='<hr class="sep"><h2 style="margin:10px 0;">Blow counts (per 100 mm)</h2>';
+    h+='<p class="helptext" style="margin-bottom:8px;">Row 0 is the seating “set” drop (AS 1289.6.3.2). Use <span class="mono">8 HB</span> for hammer-bounce refusal or <span class="mono">12+ R</span> for refusal instead of a number. Soil type follows the test default unless you override a row — if sand turns to clay partway and the split depth isn\'t certain, override the nearest row and flag the test.</p>';
+    h+='<div class="quickbox">'+
+       '<div class="quickhead"><span class="eyebrow">Rapid entry</span>'+
+         '<span class="nextdepth mono" id="nextDepth"></span></div>'+
+       '<div class="quickrow">'+
+         '<input id="quickBlows" class="mono quickin" inputmode="numeric" autocomplete="off" placeholder="blows">'+
+         '<button class="btn primary" id="quickAdd">Add ↵</button>'+
+         '<button class="btn" id="quickUndo" title="Remove last reading">⌫</button>'+
+       '</div>'+
+       '<div class="btn-row" style="margin-top:6px;">'+
+         '<button class="btn small" data-quick="HB">Refusal (HB)</button>'+
+         '<button class="btn small" data-quick="R">Refusal (R)</button>'+
+       '</div>'+
+       '<p class="helptext" style="margin-top:6px;">Type a number and press Enter — the field stays focused so you can keep going without looking up.</p>'+
+       '</div>';
+    h+='<table class="dcp-table"><thead><tr><th style="width:3.4em;">Depth</th><th>Blows</th><th style="width:5.4em;">Soil</th><th></th></tr></thead><tbody id="dcpRows"></tbody></table>';
+    h+='<button class="btn small" id="addReading" style="margin-top:8px;">+ Add blank row</button>';
+    h+='<hr class="sep"><h2 style="margin:10px 0;">Termination</h2>';
+    h+='<div class="row">'+
+       '<label class="field"><span>How the test ended</span><select data-dcp="refusalType">'+
+         optList(['','Target depth reached','Refusal — hammer bounce (HB)','Refusal (R)',
+                  'Refusal on rock','Refusal on duricrust / laterite','Refusal on cemented soil','Other'],
+                 d.refusalType||'')+'</select></label></div>';
+    h+='<label class="field"><span>Refusal reason / material (prints on the borehole log)</span>'+
+       '<input data-dcp="refusalNote" value="'+esc(d.refusalNote)+'" placeholder="e.g. possible Laterite"></label>';
+    h+='<p class="helptext" style="margin-top:-6px;">This is written into the borehole log\'s Field Records column at the depth the test ended — as “DCP refusal on possible Laterite” in the reference logs.</p>';
+    h+='<hr class="sep"><h2 style="margin:10px 0;">Bulk paste</h2>';
+    h+='<p class="helptext" style="margin-bottom:6px;">Paste blow counts (one per line, or separated by spaces/commas) — appended using the default soil type.</p>';
+    h+='<textarea id="bulkPaste" placeholder="8&#10;17&#10;24&#10;35"></textarea>';
+    h+='<button class="btn small" id="bulkAdd" style="margin-top:6px;">Append pasted rows</button>';
+    h+='<div class="flagline" style="margin-top:14px;"><input type="checkbox" id="dcpFlag" '+(d.flag?'checked':'')+'>'+
+       '<label for="dcpFlag">🚩 Flag this test for office review</label></div>';
+    if(d.flag) h+='<label class="field" style="margin-top:6px;"><span>Note for reviewer</span><textarea data-dcp="flagNote">'+esc(d.flagNote)+'</textarea></label>';
+    host.innerHTML=h;
+
+    host.querySelectorAll('[data-dcp]').forEach(function(el){
+      var f=el.dataset.dcp, ev=el.tagName==='SELECT'?'change':'input';
+      el.addEventListener(ev,function(){
+        if(f==='id'){
+          var nid=el.value.trim();
+          if(nid && nid!==d.id && !STATE.dcp.some(function(x){return x.id===nid;})){
+            d.id=nid; document.getElementById('dcpOverlayTitle').textContent=nid;
+          } else if(nid!==d.id){ el.value=d.id; return; }
+        } else { d[f]=el.value; }
+        save(); renderDcpList();
+        if(f==='soilType') renderDcpRows(d);
+      });
+    });
+    document.getElementById('dcpFlag').addEventListener('change',function(){
+      d.flag=this.checked; save(); renderDcpDetail(d); renderDcpList();
+    });
+    document.getElementById('addReading').addEventListener('click',function(){
+      d.readings.push({blows:'',soil:''}); save(); renderDcpRows(d); updateNextDepth(d);
+    });
+    /* ---- rapid entry ---- */
+    var qin=document.getElementById('quickBlows');
+    function pushReading(v){
+      if(v==='') return;
+      d.readings.push({blows:String(v),soil:''});
+      save(); renderDcpRows(d); renderDcpList(); updateNextDepth(d);
+      var tb=document.getElementById('dcpRows');
+      if(tb && tb.lastElementChild) tb.lastElementChild.scrollIntoView({block:'nearest'});
+    }
+    function commitQuick(){
+      var v=qin.value.trim();
+      if(!v) return;
+      pushReading(v);
+      qin.value=''; qin.focus();
+    }
+    document.getElementById('quickAdd').addEventListener('click',commitQuick);
+    qin.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){ e.preventDefault(); commitQuick(); }
+    });
+    document.getElementById('quickUndo').addEventListener('click',function(){
+      if(d.readings.length<=1){ toast('Keep the seating "set" row'); return; }
+      d.readings.pop(); save(); renderDcpRows(d); renderDcpList(); updateNextDepth(d);
+      qin.focus();
+    });
+    host.querySelectorAll('[data-quick]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var v=qin.value.trim();
+        pushReading((v?v:'') + (v?' ':'') + el.dataset.quick);
+        qin.value=''; qin.focus();
+      });
+    });
+    updateNextDepth(d);
+    document.getElementById('bulkAdd').addEventListener('click',function(){
+      var ta=document.getElementById('bulkPaste');
+      var vals=ta.value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(Boolean);
+      if(!vals.length){ toast('Nothing to add'); return; }
+      d.readings=d.readings.concat(vals.map(function(v){ return {blows:v,soil:''}; }));
+      ta.value=''; save(); renderDcpRows(d);
+      toast('Added '+vals.length+' reading'+(vals.length===1?'':'s'));
+    });
+    renderDcpRows(d);
+  }
+  function updateNextDepth(d){
+    var el=document.getElementById('nextDepth');
+    if(!el) return;
+    var n=d.readings.length;
+    el.textContent = n===0 ? 'next: set (seating)' : ('next: '+(n*100)+' mm');
+  }
+  function renderDcpRows(d){
+    var body=document.getElementById('dcpRows');
+    body.innerHTML=d.readings.map(function(r,idx){
+      var label = idx===0 ? 'set' : ((idx*100)+'mm');
+      var soilOpts=[['','Default ('+d.soilType+')'],['SAND','SAND'],['CLAY','CLAY']];
+      return '<tr><td class="dcp-depth">'+label+'</td>'+
+        '<td><input class="mono" data-ri="'+idx+'" data-rf="blows" value="'+esc(r.blows)+'"></td>'+
+        '<td><select data-ri="'+idx+'" data-rf="soil">'+optList(soilOpts,r.soil)+'</select></td>'+
+        '<td><button class="btn small ghost" data-remove-reading="'+idx+'">✕</button></td></tr>';
+    }).join('');
+    body.querySelectorAll('[data-rf="blows"]').forEach(function(el){
+      el.addEventListener('input',function(){
+        d.readings[parseInt(el.dataset.ri,10)].blows=el.value; save(); renderDcpList();
+      });
+    });
+    body.querySelectorAll('[data-rf="soil"]').forEach(function(el){
+      el.addEventListener('change',function(){ d.readings[parseInt(el.dataset.ri,10)].soil=el.value; save(); });
+    });
+    body.querySelectorAll('[data-remove-reading]').forEach(function(el){
+      el.addEventListener('click',function(){
+        d.readings.splice(parseInt(el.dataset.removeReading,10),1);
+        save(); renderDcpRows(d); renderDcpList();
+      });
+    });
+  }
+
+  /* ============================================================ overlays */
+  document.querySelectorAll('[data-close-overlay]').forEach(function(b){ b.addEventListener('click',closeOverlays); });
+  function closeOverlays(){
+    try{ flushSave(); }catch(e){}
+    document.getElementById('bhOverlay').hidden=true;
+    document.getElementById('dcpOverlay').hidden=true;
+    document.getElementById('projOverlay').hidden=true;
+  }
+
+  /* ============================================================ photos */
+  document.getElementById('deckSiteBtn').addEventListener('click',function(){ currentDeck='site'; syncDeckTabs(); renderPhotoList(); });
+  document.getElementById('deckBhBtn').addEventListener('click',function(){ currentDeck='borehole'; syncDeckTabs(); renderPhotoList(); });
+  function syncDeckTabs(){
+    document.getElementById('deckSiteBtn').setAttribute('aria-current', currentDeck==='site');
+    document.getElementById('deckBhBtn').setAttribute('aria-current', currentDeck==='borehole');
+  }
+  document.getElementById('addPhoto').addEventListener('click',function(){
+    STATE.photos.push(blankPhoto(currentDeck)); save(); renderPhotoList();
+  });
+  function renderPhotoList(){
+    var host=document.getElementById('photoList');
+    var items=STATE.photos.filter(function(p){ return p.deck===currentDeck; });
+    if(!items.length){
+      host.innerHTML='<div class="empty-note">No '+(currentDeck==='site'?'site':'borehole')+' photos logged yet.</div>'; return;
+    }
+    var bhOpts=[''].concat(STATE.boreholes.map(function(b){return b.id;}));
+    host.innerHTML=items.map(function(p,i){
+      var extra = currentDeck==='site'
+        ? '<input data-p="direction" data-pid="'+p.id+'" value="'+esc(p.direction)+'" placeholder="e.g. looking north">'
+        : ('<select data-p="boreholeId" data-pid="'+p.id+'">'+optList(bhOpts,p.boreholeId)+'</select>'+
+           '<div class="row" style="margin-top:6px;">'+
+             '<input class="mono" data-p="depthFrom" data-pid="'+p.id+'" value="'+esc(p.depthFrom)+'" placeholder="From m">'+
+             '<input class="mono" data-p="depthTo" data-pid="'+p.id+'" value="'+esc(p.depthTo)+'" placeholder="To m">'+
+             '<input class="mono" data-p="tray" data-pid="'+p.id+'" value="'+esc(p.tray)+'" placeholder="Tray #">'+
+           '</div>');
+      return '<div class="card">'+
+        '<div class="photo-row">'+
+          (photoThumbs[p.id] ? '<img class="photo-thumb" src="'+photoThumbs[p.id]+'" alt="">' : '<div class="photo-thumb"></div>')+
+          '<div class="photo-fields">'+
+            '<input type="file" accept="image/*" data-pick="'+p.id+'" style="margin-bottom:6px;">'+
+            '<input class="mono" data-p="filename" data-pid="'+p.id+'" value="'+esc(p.filename)+'" placeholder="filename.jpg">'+
+          '</div></div>'+
+        '<label class="field" style="margin-top:8px;"><span>Caption</span>'+
+          '<input data-p="caption" data-pid="'+p.id+'" value="'+esc(p.caption)+'" placeholder="what is in frame"></label>'+
+        '<label class="field"><span>'+(currentDeck==='site'?'Direction / subject':'Borehole &amp; depth')+'</span>'+extra+'</label>'+
+        '<div class="btn-row"><button class="btn small danger" data-remove-photo="'+p.id+'">Remove photo '+(i+1)+'</button></div>'+
+      '</div>';
+    }).join('');
+
+    host.querySelectorAll('[data-p]').forEach(function(el){
+      var ev=el.tagName==='SELECT'?'change':'input';
+      el.addEventListener(ev,function(){
+        var p=STATE.photos.find(function(x){return x.id===el.dataset.pid;});
+        p[el.dataset.p]=el.value; save();
+      });
+    });
+    host.querySelectorAll('[data-pick]').forEach(function(el){
+      el.addEventListener('change',function(){
+        var p=STATE.photos.find(function(x){return x.id===el.dataset.pick;});
+        var file=el.files && el.files[0]; if(!file) return;
+        if(!p.filename){ p.filename=file.name; save(); }
+        try{
+          var reader=new FileReader();
+          reader.onload=function(){ photoThumbs[p.id]=reader.result; renderPhotoList(); };
+          reader.readAsDataURL(file);
+        }catch(e){}
+      });
+    });
+    host.querySelectorAll('[data-remove-photo]').forEach(function(el){
+      el.addEventListener('click',function(){
+        STATE.photos=STATE.photos.filter(function(x){return x.id!==el.dataset.removePhoto;});
+        save(); renderPhotoList();
+      });
+    });
+  }
+
+  /* ============================================================ reference tab */
+  var refRendered=false;
+  function refTable(title, head, rows){
+    return '<details class="ref" style="margin-bottom:10px;"><summary>'+esc(title)+'</summary>'+
+      '<div class="tablewrap"><table class="grid"><thead><tr>'+
+      head.map(function(hh){ return '<th>'+esc(hh)+'</th>'; }).join('')+'</tr></thead><tbody>'+
+      rows.map(function(r){
+        return '<tr>'+r.map(function(c,ci){
+          return '<td'+(ci>0?' class="num"':'')+'>'+esc(c)+'</td>';
+        }).join('')+'</tr>';
+      }).join('')+'</tbody></table></div></details>';
+  }
+  function renderRef(){
+    if(refRendered) return;
+    var host=document.getElementById('refBody');
+    var h='';
+    h+=refTable('Consistency — cohesive soils (Table 11)',['Term','su (kPa)','SPT N'],[
+      ['Very Soft (VS) — exudes between fingers','≤ 12','0–2'],
+      ['Soft (S) — moulded by light finger pressure','>12–25','2–4'],
+      ['Firm (F) — moulded by strong finger pressure','>25–50','4–8'],
+      ['Stiff (St) — cannot be moulded by fingers','>50–100','8–15'],
+      ['Very Stiff (VSt) — indented by thumb nail','>100–200','15–30'],
+      ['Hard (H) — indented with difficulty by thumb nail','> 200','> 30'],
+      ['Friable (Fr) — crumbles easily by hand','—','—']]);
+    h+=refTable('Density index — non-cohesive soils (Table 12)',['Term','ID %','SPT N'],[
+      ['Very Loose (VL)','≤ 15','0–4'],['Loose (L)','>15–35','4–10'],
+      ['Medium Dense (MD)','>35–65','10–30'],['Dense (D)','>65–85','30–50'],
+      ['Very Dense (VD)','> 85','> 50']]);
+    h+=refTable('Particle size (Table 1)',['Fraction','Size (mm)'],[
+      ['Boulders (Bo)','> 200'],['Cobbles (Co)','63–200'],
+      ['Coarse gravel (cGr)','19–63'],['Medium gravel (mGr)','6.7–19'],['Fine gravel (fGr)','2.36–6.7'],
+      ['Coarse sand (cSa)','0.6–2.36'],['Medium sand (mSa)','0.21–0.6'],['Fine sand (fSa)','0.075–0.21'],
+      ['Silt (Si)','0.002–0.075'],['Clay (Cly)','< 0.002']]);
+    h+=refTable('Secondary & minor components (Table 2)',['In coarse soils','Threshold'],[
+      ['trace clay/silt','fines ≤ 5%'],['with clay/silt','fines >5–12%'],['prefix silty/clayey','fines > 12%'],
+      ['trace sand/gravel','coarse ≤ 15%'],['with sand/gravel','coarse >15–30%'],['prefix sandy/gravelly','coarse > 30%']]);
+    h+=refTable('Coarse grained classification (Table 9)',['Symbol','Typical name'],[
+      ['GW','gravel / gravel-sand, little or no fines, well graded (≤5% fines)'],
+      ['GP','gravel / gravel-sand, uniform (≤5% fines)'],
+      ['GM','gravel-silt, gravel-sand-silt (≥12% silty fines)'],
+      ['GC','gravel-clay, gravel-sand-clay (≥12% clayey fines)'],
+      ['SW','sand / gravel-sand, well graded (≤5% fines)'],
+      ['SP','sand / gravel-sand, uniform (≤5% fines)'],
+      ['SM','sand-silt mixtures (≥12% silty fines)'],
+      ['SC','sand-clay mixtures (≥12% clayey fines)'],
+      ['dual, e.g. SP-SC','fines between 5% and 12%']]);
+    h+=refTable('Fine grained classification (Table 10)',['Symbol','Typical name'],[
+      ['ML','inorganic silt, very fine sand, rock flour, low plasticity'],
+      ['CL','inorganic clay of low plasticity, gravelly / sandy clay'],
+      ['CI','inorganic clay of medium plasticity'],
+      ['OL','organic silt'],
+      ['MH','inorganic silt, high plasticity'],
+      ['CH','inorganic clay of high plasticity'],
+      ['OH','organic clay of medium to high plasticity, organic silt'],
+      ['Pt','peat, highly organic soil']]);
+    h+=refTable('Plasticity (Table 6)',['Term','Liquid limit'],[
+      ['Non-plastic','—'],['Low plasticity (LP)','silt ≤50 / clay ≤35'],
+      ['Medium plasticity (MP)','clay >35–50'],['High plasticity (HP)','> 50']]);
+    h+=refTable('Moisture condition (Cl. 6.1.7)',['Coarse grained','Field feel'],[
+      ['Dry','non-cohesive, free running'],
+      ['Moist','feels cool, darkened, sticks together'],
+      ['Wet','free water forms when handling']]);
+    h+=refTable('Moisture — fine grained (Cl. 6.1.7)',['Description','Shorthand'],[
+      ['Moist, dry of plastic limit','w < PL'],['Moist, near plastic limit','w ≈ PL'],
+      ['Moist, wet of plastic limit','w > PL'],['Wet, near liquid limit','w ≈ LL'],['Wet, wet of liquid limit','w > LL']]);
+    h+=refTable('Rock strength (Table 19)',['Term','UCS (MPa)','Is(50) MPa'],[
+      ['Very Low (VL)','0.6–2','0.03–0.1'],['Low (L)','2–6','0.1–0.3'],['Medium (M)','6–20','0.3–1'],
+      ['High (H)','20–60','1–3'],['Very High (VH)','60–200','3–10'],['Extremely High (EH)','> 200','> 10']]);
+    h+=refTable('Weathering (Table 20)',['Term','Meaning'],[
+      ['Residual Soil (RS)','soil properties; no original structure visible'],
+      ['Extremely Weathered (XW)','soil properties; original texture still visible'],
+      ['Highly Weathered (HW)','fully discoloured; strength significantly changed'],
+      ['Moderately Weathered (MW)','fully discoloured; little strength change'],
+      ['Slightly Weathered (SW)','partial discolouration along joints'],
+      ['Fresh (FR)','no sign of decomposition']]);
+    h+=refTable('Duricrust grade (Tables 18 & 25)',['Grade','Description'],[
+      ['DI — massive / hardpan','> 90% duricrust, continuous framework'],
+      ['DII — vuggy / patchy','50–90% duricrust framework'],
+      ['DIII — nodular / fragmental','< 50%; described as a soil']]);
+    h+=refTable('SPT reporting (AS 1289.6.3.1)',['Case','Report'],[
+      ['Full penetration','N = sum of 2nd + 3rd increments'],
+      ['30 blows < 100 mm','test discontinued, N not reported'],
+      ['rod weight only (rw)','N < 1'],['hammer + rod weight only (hw)','N < 1'],
+      ['hammer bouncing 5 blows (hb)','discontinued, N not reported']]);
+    h+=refTable('Colour abbreviations (Cl. 6.1.5)',['Term','Abbr.'],[
+      ['black','bk'],['white','wh'],['grey','gy'],['red','rd'],['brown','br'],['orange','or'],
+      ['yellow','yl'],['purple','pu'],['green','gr'],['blue','bl'],
+      ['pale / dark / mottled','pl / dk / mtld']]);
+    h+='<p class="helptext">Source: AS 1726:2017 as tabulated in Qld TMR Geotechnical Terms and Symbols (F:GEOT 017/10). Consult the Standard itself for the authoritative text.</p>';
+    host.innerHTML=h;
+    refRendered=true;
+  }
+
+  /* ============================================================ borehole log PDF
+     Redraws the Opifex BOREHOLE LOG sheet: A4 portrait, 0.1 m depth ticks,
+     4 m per sheet, merged vertical runs for the narrow side columns.
+     The Consistency/Relative Density column prints the FIELD-assessed value
+     only — the DCP-interpreted value stays the office/macro's job.          */
+  // Logo arrives as a base64 data URI from the companion opifex-logo.js, which
+  // is deterministic (no image-load race, no canvas, no CORS). A text wordmark
+  // is drawn only if that file is genuinely absent.
+  var LOGO_IMG = (typeof window!=='undefined' && window.__OPIFEX_LOGO) ? window.__OPIFEX_LOGO : null;
+  var SHEET_M = 4;        // metres per sheet
+  var ROW_M = 0.1;        // depth tick
+  var PDF_SCALE = 1;      // user-set text scale for the printed sheets
+  // One wrapper scales every later setFontSize call on this document, so text
+  // wrapping and truncation all measure against the scaled size automatically.
+  function applyScale(doc){
+    PDF_SCALE = (STATE.settings && +STATE.settings.pdfScale) || 1;
+    if(PDF_SCALE===1) return;
+    var orig=doc.setFontSize.bind(doc);
+    doc.setFontSize=function(pt){ return orig(pt*PDF_SCALE); };
+  }
+  var COLS = [
+    {k:'exc',   w:8,  label:'Excavation resistance', rot:true},
+    {k:'gw',    w:8,  label:'Groundwater',           rot:true},
+    {k:'depth', w:11, label:'Depth (m)',             rot:true},
+    {k:'cls',   w:10, label:'Classification',        rot:true},
+    {k:'desc',  w:73, label:'Material Description',  rot:false,
+      sub:'Soil type, plasticity OR particle size & angularity, colour; secondary; minor components.'},
+    {k:'moist', w:8,  label:'Moisture Condition',    rot:true},
+    {k:'cons',  w:14, label:'Consistency / Relative Density', rot:true},
+    {k:'dcp',   w:9,  label:'DCP',                   rot:true},
+    {k:'samp',  w:9,  label:'Samples or Field tests',rot:true},
+    {k:'rem',   w:44, label:'Field Records/Comments',rot:false,
+      sub:'in situ testing, soil structure, soil origin, additional observations'}
+  ];
+  function colX(){
+    var x=8, out={};
+    COLS.forEach(function(c){ out[c.k]={x:x,w:c.w}; x+=c.w; });
+    out._right=x; return out;
+  }
+  // Sheets carry Australian dates. Values from a date picker arrive as
+  // yyyy-mm-dd; anything already written dd/mm/yyyy passes through untouched.
+  function fmtDate(s){
+    s=String(s==null?'':s).trim();
+    var m=s.match(/^(\d{4})-(\d{2})-(\d{2})$$/);
+    return m ? m[3]+'/'+m[2]+'/'+m[1] : s;
+  }
+  function num(v){ var n=parseFloat(v); return isNaN(n)?null:n; }
+  function intervalAt(b, depth){
+    for(var i=0;i<b.intervals.length;i++){
+      var iv=b.intervals[i], f=num(iv.from), t=num(iv.to);
+      if(f===null && t===null) continue;
+      if(f===null) f=0;
+      if(t===null) t=f+ROW_M;
+      if(depth>=f-1e-6 && depth<t-1e-6) return iv;
+    }
+    return null;
+  }
+  function consistencyFull(code){
+    if(!code) return '';
+    var w=consistencyWord(code);
+    return w===code ? code : w;
+  }
+
+  /* ---- Relative density from DCP blow count ----------------------------
+     These bands are not invented here: they were recovered from this user's
+     own DCP workbook (DCP tests - Dalwallinu Dam.xlsm) by reading its blow
+     counts against the values its VBA interpretation produced, so the app
+     agrees with the macro rather than offering a second opinion.
+       SAND:  0-2 -> Loose | 3-7 -> Medium Dense | 8-14 -> Dense | 15+ -> Very Dense
+     The workbook's own readings started at 2; 0 and 1 counting as Loose was
+     confirmed by the user. Every reading in that workbook was SAND, so no CLAY
+     mapping could be recovered — clay returns nothing rather than a guess.
+     Terms themselves are AS 1726:2017 Table 12.                          */
+  function autoDensityTerm(blows, soil){
+    var n=blowNum(blows);
+    if(n===null) return '';
+    if((soil||'SAND').toUpperCase()!=='SAND') return '';   // no clay correlation available
+    if(n<=2) return 'Loose';
+    if(n<=7) return 'Medium Dense';
+    if(n<=14) return 'Dense';
+    return 'Very Dense';
+  }
+  function autoDensityUncertain(blows, soil){
+    var n=blowNum(blows);
+    if(n===null) return false;
+    return (soil||'SAND').toUpperCase()!=='SAND';
+  }
+  // Prefer the explicitly linked test; otherwise match the trailing number
+  // (BH01 -> DCP01), which is how the tests are paired in practice.
+  function dcpTestFor(b){
+    var t=STATE.dcp.find(function(d){ return d.boreholeId && d.boreholeId===b.id; });
+    if(!t){
+      var n=(String(b.id).match(/(\d+)\s*$/)||[])[1];
+      if(n) t=STATE.dcp.find(function(d){
+        var dn=(String(d.id).match(/(\d+)\s*$/)||[])[1];
+        return dn && parseInt(dn,10)===parseInt(n,10);
+      });
+    }
+    return t||null;
+  }
+  function dcpReadingsFor(b){ var t=dcpTestFor(b); return t?t.readings:null; }
+  // "DCP refusal on possible Laterite" — as the reference logs record it
+  function dcpEndNote(t){
+    if(!t) return '';
+    var why=t.refusalNote||'';
+    var how=t.refusalType||'';
+    if(!why && !how) return '';
+    if(/refusal/i.test(how)) return 'DCP refusal'+(why?' on '+why:'')+'.';
+    if(how) return 'DCP '+how.toLowerCase()+(why?' — '+why:'')+'.';
+    return 'DCP refusal on '+why+'.';
+  }
+  /* ---- text fitting: nothing may leave its column ---- */
+  // Shrink text until it fits. A log sheet must never show an ellipsis:
+  // a truncated coordinate or record is a lost field observation.
+  function fitShrink(doc, s, maxW, startPt, minPt){
+    var fs=startPt;
+    doc.setFontSize(fs);
+    while(fs>(minPt||4) && doc.getTextWidth(String(s==null?'':s))>maxW){ fs-=0.25; doc.setFontSize(fs); }
+    return fs;
+  }
+  function fitStr(doc, s, maxW){
+    s=String(s==null?'':s);
+    if(!s) return '';
+    if(doc.getTextWidth(s)<=maxW) return s;
+    while(s.length>1 && doc.getTextWidth(s+'…')>maxW) s=s.slice(0,-1);
+    return s+'…';
+  }
+  // label + bold value inside a fixed cell, value clipped to what's left
+  function labelValue(doc, label, value, x, y, cellW, size){
+    doc.setFontSize(size); doc.setFont('helvetica','normal');
+    doc.text(label, x, y);
+    var lw=doc.getTextWidth(label)+1.2;
+    doc.setFont('helvetica','bold');
+    fitShrink(doc, value, cellW-lw-1.5, size, 4.5);   // shrinks, never clips
+    doc.text(String(value==null?'':value), x+lw, y);
+    doc.setFontSize(size); doc.setFont('helvetica','normal');
+  }
+  // group consecutive rows sharing a value -> [{from,to,value}]
+  function runs(values){
+    var out=[], cur=null;
+    values.forEach(function(v,i){
+      if(cur && cur.value===v){ cur.to=i; return; }
+      if(cur) out.push(cur);
+      cur={from:i,to:i,value:v};
+    });
+    if(cur) out.push(cur);
+    return out.filter(function(r){ return r.value; });
+  }
+  // Vertical text reads top-to-bottom (-90°). jsPDF does not honour
+  // align:'center' on rotated text, so the anchor is computed by hand: at -90°
+  // the string runs downward, so centring means starting at mid - halfTextWidth.
+  function vdraw(doc, s, x, mid){
+    doc.text(String(s), x, mid-doc.getTextWidth(String(s))/2, {angle:-90, baseline:'middle'});
+  }
+  // Rotated label centred in a vertical run. Shrinks, then wraps to 2 lines,
+  // then truncates — it never overruns the run it belongs to.
+  // Keeps the requested font size: wraps onto as many stacked lines as the
+  // column can hold, and only shrinks if it genuinely cannot fit even then.
+  // One line, running top to bottom, shrunk until it fits its run. Stacking
+  // several lines across a 9 mm column crowded the neighbouring columns.
+  // Wrap across the column before shrinking, and never go below a readable
+  // floor: a 6 pt "Loose to Medium Dense" on two lines beats 3 pt on one.
+  // One continuous line running top to bottom, shrunk to fit its run, so a
+  // merged range reads "Loose" at the top and "Medium Dense" at the bottom,
+  // in the same sense as the depths beside it. Runs too short to carry their
+  // label are merged upstream, so the shrinking stays mild.
+  // Runs are left exactly as the blow counts produce them - never merged - so
+  // the column reports what was measured. Only the writing adapts: the label
+  // wraps onto further lines across the column, every line still at -90 so it
+  // reads top to bottom like the rest of the sheet.
+  // Horizontal, wrapped inside its box and centred in the run. Used for
+  // Consistency / Relative Density, which reads better across the column
+  // than rotated.
+  function htext(doc, txt, x, w, yTop, yBot, size){
+    if(!txt) return;
+    var availH=(yBot-yTop)-0.8, maxW=w-1.6;
+    if(availH<=1.2) return;
+    var fs=size||6.5, lines, lh;
+    doc.setFont('helvetica','normal');
+    for(var g=0; g<18; g++){
+      doc.setFontSize(fs);
+      lh=fs*0.42*PDF_SCALE;
+      lines=doc.splitTextToSize(String(txt), maxW);
+      if(lines.length*lh<=availH || fs<=4) break;
+      fs-=0.25;
+    }
+    var startY=(yTop+yBot)/2-(lines.length*lh)/2+lh*0.72;
+    for(var i=0;i<lines.length;i++)
+      doc.text(lines[i], x+w/2, startY+i*lh, {align:'center'});
+  }
+  function vtext(doc, txt, cx, yTop, yBot, colW, size){
+    if(!txt) return;
+    var avail=(yBot-yTop)-0.8;
+    if(avail<=1.2) return;
+    var s=String(txt), mid=(yTop+yBot)/2, w=colW||8, fs=size||8;
+    doc.setFont('helvetica','normal');
+    function stack(lines, lineH){
+      var startX=cx-((lines.length-1)*lineH)/2;
+      for(var i=0;i<lines.length;i++) vdraw(doc, lines[i], startX+i*lineH, mid);
+    }
+    for(var guard=0; guard<16; guard++){
+      doc.setFontSize(fs);
+      var lineH=fs*0.3528*1.12;
+      var maxLines=Math.max(1, Math.floor((w-0.5)/lineH));
+      var lines=doc.splitTextToSize(s, avail);
+      if(lines.length<=maxLines){ stack(lines, lineH); return; }
+      if(fs<=5) break;
+      fs-=0.25;
+    }
+    fs=Math.max(fs,5); doc.setFontSize(fs);
+    var lh=fs*0.3528*1.12;
+    var ml=Math.max(1, Math.floor((w-0.5)/lh));
+    stack(doc.splitTextToSize(s, avail).slice(0, ml), lh);
+  }
+  // Round up to the next whole metre, adding one more only when that would
+  // leave almost no headroom: 2.2 m -> 3 m, 2.0 m -> 3 m, 3.2 m -> 4 m.
+  function fitDepth(d){
+    if(!(d>0)) return 4;
+    var up=Math.ceil(d);
+    if(up-d < 0.3) up+=1;
+    return Math.max(2, up);
+  }
+  function sheetDepthFor(b){
+    var manual=num(b.sheetDepth);
+    if(manual && manual>0) return manual;
+    var t=num(b.terminationDepth);
+    if(t===null || t<=0) return 4;
+    var d=fitDepth(t);
+    if(d>6) d=5;
+    return d;
+  }
+  // Depth axis for a DCP sheet follows the deepest test shown on it, so every
+  // chart on the page shares one scale and they stay comparable.
+  function dcpDepthFor(tests){
+    var deepest=0;
+    (tests||[]).forEach(function(t){
+      deepest=Math.max(deepest, (t.readings?t.readings.length:0)*ROW_M);
+    });
+    return fitDepth(deepest);
+  }
+  function drawLogSheet(doc, b, sheetIdx, sheetCount, gIdx, gTotal){
+    var SHEET_M = sheetDepthFor(b);   // shadows the default for this sheet
+    var C=colX(), L=8, R=C._right, T=8;
+    var pr=STATE.project;
+    doc.setLineWidth(0.25);
+    doc.setDrawColor(0);
+
+    /* ---- title block ---- */
+    var titleH=21;
+    doc.rect(L,T,R-L,titleH);
+    var logoOk=false;
+    if(LOGO_IMG){ try{ doc.addImage(LOGO_IMG,'PNG',L+2.5,T+4,36,11.5); logoOk=true; }catch(e){} }
+    if(!logoOk){
+      doc.setFont('helvetica','bold'); doc.setFontSize(10);
+      doc.text('OPIFEX', L+3, T+9);
+      doc.setFont('helvetica','normal'); doc.setFontSize(5);
+      doc.text('GEOTECHNICS', L+3, T+12.5);
+    }
+    var idW=30, idX=R-idW;               // reserved right-hand ID cell
+    doc.line(idX, T, idX, T+titleH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text('BOREHOLE LOG', (L+38+idX)/2, T+13, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(7);
+    doc.text('Borehole ID:', idX+idW/2, T+5.5, {align:'center'});
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text(fitStr(doc, b.id, idW-3), idX+idW/2, T+13, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+    doc.text('Sheet '+((gIdx==null?sheetIdx:gIdx)+1)+' of '+(gTotal==null?sheetCount:gTotal),
+             idX+idW/2, T+18, {align:'center'});
+
+    /* ---- info rows: fixed left/right cells, values clipped ---- */
+    var y=T+titleH, rowH=5.8, xSplit=R-58, infoTop=y;
+    var left=[['CLIENT:',pr.client],['PROJECT:',pr.projectName],
+              ['LOCATION:',pr.location],['COMMENTS:',b.comments]];
+    var right=[['Job number:',pr.jobNumber],['Date:',fmtDate(pr.date)],
+               ['Logged:',b.loggedBy||pr.fieldEngineer],['Operator:',b.operator]];
+    for(var i=0;i<4;i++){
+      doc.setFontSize(9); doc.setFont('helvetica','normal');
+      doc.text(left[i][0], L+1.5, y+4);
+      doc.setFont('helvetica','bold');
+      doc.text(fitStr(doc, left[i][1], xSplit-(L+30)-1.5), L+30, y+4);
+      doc.setFont('helvetica','normal');
+      doc.text(right[i][0], xSplit+1.5, y+4);
+      var lw=doc.getTextWidth(right[i][0])+2;
+      doc.setFont('helvetica','bold');
+      doc.text(fitStr(doc, right[i][1], (R-1.5)-(xSplit+1.5+lw)), R-1.5, y+4, {align:'right'});
+      y+=rowH;
+    }
+    // solid rule closing the client/project block — the rig details below are a different kind of record
+    doc.rect(L, infoTop, R-L, y-infoTop);
+    doc.setLineWidth(0.6); doc.line(L,y,R,y); doc.setLineWidth(0.25);
+    /* ---- drilling rows: three fixed segments ---- */
+    var segs=[L, L+80, L+132, R];
+    var dr=[[['Drilling Method (Rig):',b.drillingMethod],['Drill Diameter:',b.drillDiameter],
+             ['Coordinates:',(b.coordE?'E'+b.coordE:'')+(b.coordN?'  N'+b.coordN:'')]],
+            [['Flushing fluid:',b.flushingFluid],['Inclination:',b.inclination],['RL(m):',b.rl]]];
+    var drillTop=y;
+    dr.forEach(function(cells){
+      cells.forEach(function(c,ci){
+        labelValue(doc, c[0], c[1], segs[ci]+1.5, y+4, segs[ci+1]-segs[ci]-3, 9);
+      });
+      y+=rowH;
+    });
+    doc.rect(L, drillTop, R-L, y-drillTop);
+    doc.line(L, drillTop+rowH, R, drillTop+rowH);    // single line between the two rows
+
+    /* ---- column header band ---- */
+    var headY=y, headH=26;
+    doc.setLineWidth(0.6); doc.line(L,headY,R,headY); doc.setLineWidth(0.25);
+    doc.rect(L,headY,R-L,headH);
+    COLS.forEach(function(c){
+      var cx=C[c.k].x;
+      if(cx>L) doc.line(cx,headY,cx,headY+headH);
+      if(c.rot){
+        // rotated heading, wrapped to at most 2 lines inside the band
+        doc.setFont('helvetica','bold'); doc.setFontSize(8);
+        var avail=headH-3;
+        var ln=doc.splitTextToSize(c.label, avail);
+        if(ln.length>2) ln=[ln[0], fitStr(doc, ln.slice(1).join(' '), avail)];
+        var mid=headY+headH/2;
+        if(ln.length===1){
+          vdraw(doc, ln[0], cx+c.w/2, mid);
+        } else {
+          var glh=8*0.3528*1.05;
+          vdraw(doc, ln[0], cx+c.w/2-glh/2, mid);
+          vdraw(doc, ln[1], cx+c.w/2+glh/2, mid);
+        }
+      } else {
+        doc.setFont('helvetica','bold');
+        fitShrink(doc, c.label, c.w-3, 14, 7);
+        doc.text(String(c.label), cx+c.w/2, headY+10, {align:'center'});
+        if(c.sub){
+          doc.setFont('helvetica','normal'); doc.setFontSize(6);
+          doc.text(doc.splitTextToSize(c.sub, c.w-4), cx+c.w/2, headY+14.5, {align:'center'});
+        }
+      }
+    });
+    y=headY+headH;
+
+    /* ---- body ----
+       Band heights are not uniform. A stratum whose description needs more
+       room than its depth span would give is allotted a taller band, and the
+       others give up the difference, so description text always finishes
+       above its own boundary line. Depth ticks follow the same mapping, so
+       every label still sits against its true depth.                      */
+    var footH=16;
+    var bodyTop=y, bodyBot=297-8-footH;
+    var nRows=Math.round(SHEET_M/ROW_M);
+    var d0=sheetIdx*SHEET_M;
+    var term=num(b.terminationDepth);
+    var rh=(bodyBot-bodyTop)/nRows;        // even spacing, before adjustment
+
+    doc.rect(L,bodyTop,R-L,bodyBot-bodyTop);
+    COLS.forEach(function(c){
+      var cx=C[c.k].x;
+      if(cx>L) doc.line(cx,bodyTop,cx,bodyBot);
+    });
+
+    // resolve per-row values
+    var rows=[], dcpT=dcpTestFor(b), readings=dcpT?dcpT.readings:null;
+    var autoOn = STATE.settings ? STATE.settings.autoDensity!==false : true;
+    for(var r=0;r<nRows;r++){
+      var top=d0+r*ROW_M, mid=top+ROW_M/2;
+      var past = (term!==null && top>=term-1e-6);
+      var iv = past?null:intervalAt(b, mid);
+      var rd = readings ? readings[Math.round(top/ROW_M)] : null;
+      var blows = rd ? rd.blows
+                : ((iv && iv.dcpInline && Math.abs(top-(num(iv.from)||0))<1e-6) ? iv.dcpInline : '');
+      var cons='';
+      if(iv){
+        if(iv.consistency) cons=consistencyFull(iv.consistency);
+        else if(autoOn && blows) cons=autoDensityTerm(blows, rd?(rd.soil||dcpT.soilType):(dcpT?dcpT.soilType:''));
+      }
+      rows.push({ top:top, iv:iv, past:past,
+        exc: iv?excavationPhrase(iv):'',
+        gw : past?'':(b.gwEncountered?(num(b.gwDepth)!==null&&mid>=num(b.gwDepth)?'Groundwater':''):'Groundwater Not Encountered'),
+        moist: iv?iv.moisture:'',
+        cons: cons,
+        dcp: blows });
+    }
+
+    /* --- text blocks, gathered before the scale is set so the bands can be
+       sized to hold them --- */
+    var seen={}, descItems=[], remItems=[], bounds=[];
+    rows.forEach(function(row,r5){
+      if(!row.iv || seen[row.iv.id]) return;
+      seen[row.iv.id]=true;
+      var iv=row.iv;
+      bounds.push(r5);
+      descItems.push({row:r5, depth:iv.from, cls:classSymbol(iv.d), iv:iv,
+        text:(iv.descManual?iv.description:buildDescription(iv))});
+      var rem=[];
+      if(iv.comments) rem.push(iv.comments);
+      (iv.samples||[]).forEach(function(s){
+        rem.push([(s.from||'')+((s.from||s.to)?' - '+(s.to||''):'')+((s.from||s.to)?'m':''),
+                  s.type, s.detail].filter(Boolean).join(' '));
+      });
+      if(iv.spt) rem.push('SPT '+[iv.spt.i1,iv.spt.i2,iv.spt.i3].filter(function(x){return x!=='';}).join('/')+
+                          (sptResult(iv.spt)?', '+sptResult(iv.spt):''));
+      if(iv.pp) rem.push('PP '+iv.pp+' kPa');
+      if(rem.length) remItems.push({row:r5, depth:iv.from, text:rem.join('; ')});
+    });
+
+    function rowOf(dv){
+      var v=num(dv);
+      if(v===null) return null;
+      if(v<=d0 || v>d0+SHEET_M) return null;
+      return Math.max(0, Math.min(nRows-1, Math.round((v-d0)/ROW_M)-1));
+    }
+    (b.observations||[]).forEach(function(o){
+      var rr=rowOf(o.depth);
+      if(rr===null || !o.text) return;
+      descItems.push({row:rr, depth:o.depth, text:String(o.text), note:true});
+    });
+    (b.remarks||[]).forEach(function(o){
+      var rr=rowOf(o.depth);
+      if(rr===null || !o.text) return;
+      remItems.push({row:rr, depth:o.depth, text:String(o.text), note:true});
+    });
+    var dcpTest=dcpT, endNote=dcpEndNote(dcpTest);
+    if(dcpTest && endNote){
+      var endDepth=(dcpTest.readings.length)*ROW_M, er=rowOf(endDepth);
+      if(er!==null) remItems.push({row:er, depth:endDepth.toFixed(1), text:endNote, note:true});
+    }
+    descItems.sort(function(a,c){ return a.row-c.row; });
+    remItems.sort(function(a,c){ return a.row-c.row; });
+
+    /* --- work out how tall each band has to be, then share out the page --- */
+    var DESC_FS=8.5, REM_FS=7;
+    function needH(text, w, fs){
+      doc.setFont('helvetica','normal'); doc.setFontSize(fs);
+      var lines=doc.splitTextToSize(String(text||''), w-3);
+      return lines.length*(fs*0.42*PDF_SCALE)+3.4;   // includes the gap below the rule
+    }
+    var spans=[];
+    descItems.forEach(function(it, k){
+      if(it.note) return;
+      var nextRow=nRows;
+      for(var m=k+1;m<descItems.length;m++){ if(!descItems[m].note){ nextRow=descItems[m].row; break; } }
+      var h=needH(it.text, C.desc.w, DESC_FS);
+      var rIt=null;
+      remItems.forEach(function(q){ if(!q.note && q.row===it.row) rIt=q; });
+      if(rIt) h=Math.max(h, needH(rIt.text, C.rem.w, REM_FS));
+      spans.push({a:it.row, b:Math.max(it.row+1,nextRow), need:h});
+    });
+
+    var weights=[], wi;
+    for(wi=0;wi<nRows;wi++) weights.push(1);
+    var H=bodyBot-bodyTop;
+    for(var pass=0; pass<8; pass++){
+      var total=0; for(wi=0;wi<nRows;wi++) total+=weights[wi];
+      var unit=H/total, changed=false;
+      spans.forEach(function(sp){
+        var have=0;
+        for(var k2=sp.a;k2<sp.b;k2++) have+=weights[k2]*unit;
+        if(have>0 && sp.need>have+0.05){
+          var sc=sp.need/have;
+          for(var k3=sp.a;k3<sp.b;k3++) weights[k3]*=sc;
+          changed=true;
+        }
+      });
+      if(!changed) break;
+    }
+    var tot=0; for(wi=0;wi<nRows;wi++) tot+=weights[wi];
+    var unitH=H/tot, rowY=[bodyTop];
+    for(wi=0;wi<nRows;wi++) rowY.push(rowY[wi]+weights[wi]*unitH);
+    function rowTop(i){ return rowY[Math.max(0,Math.min(nRows,i))]; }
+    function yAtDepth(dv){
+      var v=num(dv); if(v===null) return null;
+      var f=(v-d0)/ROW_M;
+      if(f<=0) return rowY[0];
+      if(f>=nRows) return rowY[nRows];
+      var i2=Math.floor(f);
+      return rowY[i2]+(rowY[i2+1]-rowY[i2])*(f-i2);
+    }
+
+    // depth ticks and labels, following the adjusted scale
+    doc.setFont('helvetica','normal');
+    for(var r2=0;r2<nRows;r2++){
+      var ryb=rowTop(r2+1), d=d0+(r2+1)*ROW_M;
+      var isHalf=Math.abs((d*10)%5)<1e-6;
+      doc.setFontSize(isHalf?7:6.5);
+      doc.setFont('helvetica',isHalf?'bold':'normal');
+      doc.text(d.toFixed(1), C.depth.x+C.depth.w-2.4, ryb-0.5, {align:'right', baseline:'bottom'});
+      doc.setLineWidth(0.15);
+      doc.line(C.depth.x+C.depth.w-2, ryb, C.depth.x+C.depth.w, ryb);
+      doc.line(R-2, ryb, R, ryb);
+      doc.setLineWidth(0.25);
+    }
+
+    // DCP cells
+    doc.setFont('helvetica','normal'); doc.setFontSize(7);
+    rows.forEach(function(row,r3){
+      var yT=rowTop(r3), yB=rowTop(r3+1);
+      doc.setLineWidth(0.12);
+      doc.line(C.dcp.x, yT, C.dcp.x+C.dcp.w, yT);
+      doc.setLineWidth(0.25);
+      if(row.dcp) doc.text(fitStr(doc, row.dcp, C.dcp.w-1.5), C.dcp.x+C.dcp.w/2, (yT+yB)/2,
+                           {align:'center', baseline:'middle'});
+    });
+
+    // Side columns, drawn exactly as the readings group them
+    [['exc','exc'],['gw','gw'],['moist','moist'],['cons','cons']].forEach(function(p){
+      var vals=rows.map(function(r4){ return r4[p[0]]; });
+      runs(vals).forEach(function(run){
+        var yT=rowTop(run.from), yB=rowTop(run.to+1);
+        var cc=C[p[1]];
+        if(p[1]==='cons') htext(doc, run.value, cc.x, cc.w, yT, yB, 6.5);
+        else vtext(doc, run.value, cc.x+cc.w/2, yT, yB, cc.w, 8);
+        if(run.to+1<nRows){ doc.setLineWidth(0.12); doc.line(cc.x,yB,cc.x+cc.w,yB); doc.setLineWidth(0.25); }
+      });
+    });
+
+    // interval boundary rules
+    doc.setLineWidth(0.15);
+    bounds.forEach(function(rr){
+      var by2=rowTop(rr);
+      doc.line(C.cls.x, by2, C.moist.x, by2);
+    });
+    doc.setLineWidth(0.25);
+
+    function layoutColumn(items, col, startFs, minFs){
+      var cursor=-1;
+      items.forEach(function(it){
+        var want=rowTop(it.row);
+        var yy=Math.max(want, cursor+0.8);
+        var moved=(yy>want+0.6);
+        var txt=String(it.text||'');
+        if(it.note && moved && it.depth!=='' && it.depth!=null && !/^\s*at\s*[\d.]/i.test(txt))
+          txt='At '+it.depth+'m '+txt;
+        var fs=startFs, lines, lh;
+        for(;;){
+          doc.setFontSize(fs);
+          lh=fs*0.42*PDF_SCALE;
+          lines=doc.splitTextToSize(txt, col.w-3);
+          if(yy+lines.length*lh<=bodyBot-0.5 || fs<=minFs) break;
+          fs-=0.3;
+        }
+        if(yy+lines.length*lh>bodyBot-0.5) yy=Math.max(bodyTop, bodyBot-0.5-lines.length*lh);
+        doc.setFont('helvetica','normal'); doc.setFontSize(fs);
+        doc.text(lines, col.x+1.5, yy+3.4);   // sits clear of the rule above
+        if(it.cls){
+          doc.setFontSize(7);
+          doc.text(doc.splitTextToSize(it.cls, C.cls.w-2),
+                   C.cls.x+C.cls.w/2, want+3.4, {align:'center'});
+        }
+        cursor=yy+lines.length*lh;
+      });
+    }
+    layoutColumn(descItems, C.desc, DESC_FS, 5.5);
+    layoutColumn(remItems, C.rem, REM_FS, 4.8);
+
+    // sample markers against their own depths
+    rows.forEach(function(row,r6){
+      if(!row.iv) return;
+      if(r6>0 && rows[r6-1].iv===row.iv) return;
+      (row.iv.samples||[]).forEach(function(s){
+        var sf=num(s.from), st=num(s.to);
+        if(sf===null) return;
+        if(st===null) st=sf+ROW_M;
+        if(st<=d0 || sf>=d0+SHEET_M) return;
+        var yT=yAtDepth(Math.max(sf,d0)), yB=yAtDepth(Math.min(st,d0+SHEET_M));
+        var x1=C.samp.x+1.5, x2=C.samp.x+C.samp.w-1.5;
+        doc.setLineWidth(0.2);
+        doc.line(x1,yT,x2,yT); doc.line(x1,yB,x2,yB);
+        doc.line(x1,yT,x2,yB); doc.line(x2,yT,x1,yB);
+        doc.setLineWidth(0.25);
+      });
+    });
+
+    // end of borehole
+    if(term!==null && term>d0 && term<=d0+SHEET_M){
+      var ty=yAtDepth(term);
+      doc.setLineWidth(0.4); doc.line(L,ty,R,ty); doc.setLineWidth(0.25);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      var reason=b.terminationReason==='Other'?b.terminationOther:b.terminationReason;
+      doc.text(fitStr(doc,'End of Borehole at '+b.terminationDepth+'m', C.desc.w-4),
+               C.desc.x+C.desc.w/2, ty+5, {align:'center'});
+      if(reason) doc.text(fitStr(doc, reason, C.desc.w-4), C.desc.x+C.desc.w/2, ty+9, {align:'center'});
+    }
+
+    /* ---- footer ---- */
+    var fy=bodyBot;
+    doc.rect(L,fy,R-L,footH);                       // outer frame only
+    var signW=66, rh3=footH/3;
+    labelValue(doc, 'Produced By:', b.loggedBy||pr.fieldEngineer||'', L+1.5, fy+rh3*0.5+1.5, signW-3, 8);
+    labelValue(doc, 'Checked By:',  b.checkedBy||'', L+1.5, fy+rh3*1.5+1.5, signW-3, 8);
+    labelValue(doc, 'Check Date:',  fmtDate(b.checkDate||''), L+1.5, fy+rh3*2.5+1.5, signW-3, 8);
+    doc.setFont('helvetica','normal'); doc.setFontSize(12);
+    doc.text('Opifex Geotechnics Pty Ltd', (L+R)/2, fy+footH/2+1.5, {align:'center'});
+    if(LOGO_IMG){ try{ doc.addImage(LOGO_IMG,'PNG',R-32,fy+1.8,30,9.5); }catch(e){} }
+  }
+
+  /* ============================================================ DCP PDF
+     Landscape A4, three tests per sheet, bar-per-100 mm against depth —
+     the shape of the DCP output sheets, to AS 1289.6.3.2.              */
+  function blowNum(v){
+    var m=String(v==null?'':v).match(/-?\d+(\.\d+)?/);
+    return m?parseFloat(m[0]):null;
+  }
+  function drawDcpChart(doc, t, x, y, w, h, maxDepth){
+    if(!maxDepth) maxDepth=dcpDepthFor([t]);
+    var vals=t.readings.map(function(r){ return blowNum(r.blows); }).filter(function(v){ return v!==null; });
+    var maxB=Math.max(10, Math.ceil(Math.max.apply(null, vals.concat([10]))/5)*5);
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text(String(t.id||''), x+w/2, y+6, {align:'center'});
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('Blows / 100mm', x+w/2, y+13, {align:'center'});
+
+    var pl=x+14, pr2=x+w-3, pt=y+18, pb=y+h-5;      // plot area
+    var pw=pr2-pl, ph=pb-pt;
+
+    // x scale + gridlines
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    var step=maxB<=20?5:10;
+    for(var gx=0; gx<=maxB; gx+=step){
+      var px=pl+(gx/maxB)*pw;
+      doc.setDrawColor(190); doc.setLineWidth(0.12);
+      doc.line(px, pt, px, pb);
+      doc.setDrawColor(0);
+      doc.text(String(gx), px, pt-2, {align:'center'});
+    }
+    // y scale
+    doc.setLineWidth(0.25);
+    doc.line(pl, pt, pl, pb);
+    doc.line(pl, pt, pr2, pt);
+    for(var dm=0; dm<=maxDepth+1e-9; dm+=0.2){
+      var py=pt+(dm/maxDepth)*ph;
+      doc.setFontSize(6.5);
+      doc.text(dm.toFixed(1), pl-1.5, py, {align:'right', baseline:'middle'});
+      doc.setDrawColor(215); doc.setLineWidth(0.1);
+      doc.line(pl, py, pl+1, py);
+      doc.setDrawColor(0); doc.setLineWidth(0.25);
+    }
+    doc.setFontSize(8); doc.setFont('helvetica','bold');
+    vdraw(doc, 'Depth, z [m]', x+4, (pt+pb)/2);
+    doc.setFont('helvetica','normal');
+
+    // bars
+    var rowH=(ph/maxDepth)*ROW_M;
+    t.readings.forEach(function(r,i){
+      var top=pt+(i*ROW_M/maxDepth)*ph;
+      if(top>pb-0.2) return;
+      var n=blowNum(r.blows);
+      var label=String(r.blows==null?'':r.blows);
+      if(n!==null && !/^set$/i.test(label)){
+        var bw=Math.max(0.4,(n/maxB)*pw);
+        doc.setFillColor(255,192,0);
+        doc.rect(pl, top+rowH*0.12, Math.min(bw,pw), Math.max(0.6,rowH*0.76), 'F');
+      }
+      if(label){
+        doc.setFontSize(6); doc.setTextColor(0);
+        doc.text(label, pl+0.8, top+rowH/2, {baseline:'middle'});
+      }
+    });
+    doc.setDrawColor(0);
+    doc.rect(pl, pt, pw, ph);
+
+    var note=dcpEndNote(t);
+    if(note){
+      doc.setFontSize(7); doc.setFont('helvetica','normal');
+      doc.text(doc.splitTextToSize(note, w-4), x+2, pb+4);
+    }
+  }
+  function drawDcpPage(doc, tests, pageIdx, pageCount){
+    var pr=STATE.project, L=8, R=289, T=8;
+    var blockH=28, bodyBot=210-8-blockH;
+    doc.setDrawColor(0); doc.setLineWidth(0.25);
+
+    var perPage=4, gap=4, cw=(R-L-gap*(perPage-1))/perPage;
+    var pageDepth=dcpDepthFor(tests);
+    tests.forEach(function(t,i){
+      drawDcpChart(doc, t, L+i*(cw+gap), T, cw, bodyBot-T-4, pageDepth);
+    });
+
+    /* ---- title block ---- */
+    var by=bodyBot, rowH=blockH/3, logoW=42;
+    var xs=[L, L+92, L+150, L+200, R-logoW];
+    doc.rect(L,by,R-L,blockH);
+    doc.line(R-logoW, by, R-logoW, by+blockH);
+    for(var i2=1;i2<3;i2++) doc.line(L, by+i2*rowH, R-logoW, by+i2*rowH);
+    for(var i3=1;i3<4;i3++) doc.line(xs[i3], by, xs[i3], by+blockH);
+    var t0=tests[0]||{};
+    var rowsTB=[
+      [['Client:',pr.client],      ['Job No:',pr.jobNumber],                   ['Sheet:',(pageIdx+1)+' of '+pageCount], ['Reviewed by:',t0.reviewed||'']],
+      [['Project:',pr.projectName],['Test Date:',fmtDate(t0.testDate||pr.date)],        ['Method:','DCP - AS 1289.6.3.2'],       ['Review date:',fmtDate(t0.reviewDate||'')]],
+      [['Location:',pr.location],  ['Engineer:',t0.engineer||pr.fieldEngineer],['',''],                                 ['','']]
+    ];
+    rowsTB.forEach(function(cells,ri){
+      cells.forEach(function(c,ci){
+        labelValue(doc, c[0], c[1], xs[ci]+1.5, by+ri*rowH+rowH/2+1.5, xs[ci+1]-xs[ci]-3, 9);
+      });
+    });
+    if(LOGO_IMG){ try{ doc.addImage(LOGO_IMG,'PNG',R-38,by+6,34,10.8); }catch(e){} }
+    else { doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('OPIFEX', R-38, by+12); }
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(6);
+    doc.text('DYNAMIC CONE PENETROMETER TESTS DONE IN ACCORDANCE WITH AS1289.6.3.2  |  HB: HAMMER BOUNCE (REFUSAL)  |  0 = PENETRATION DUE TO HAMMER WEIGHT ONLY  |  R: REFUSAL',
+             (L+R)/2, by+blockH+3.5, {align:'center'});
+  }
+  // Automation hook: renders the current project's DCP sheets and hands back a
+  // data URI, bypassing the viewer save prompt. Used to produce a PDF file
+  // outside the app; harmless when unused.
+  function exportDcpPdf(tests, filename){
+    if(!window.jspdf || !window.jspdf.jsPDF){ toast('PDF engine still loading — try again in a moment'); return; }
+    if(!tests.length){ toast('No DCP tests to export yet'); return; }
+    var doc=new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'landscape'});
+    applyScale(doc);
+    var pages=Math.ceil(tests.length/4);
+    for(var p=0;p<pages;p++){
+      if(p>0) doc.addPage();
+      drawDcpPage(doc, tests.slice(p*4,p*4+4), p, pages);
+    }
+    var blob=doc.output('blob');
+    if(downloads){
+      downloads.save({filename:filename, data:blob})
+        .then(function(){ toast('Saved '+filename); })
+        .catch(function(err){
+          if(err && err.code==='declined'){ toast('Save cancelled'); return; }
+          toast('Could not save the PDF here');
+        });
+    } else {
+      try{ window.open(URL.createObjectURL(blob),'_blank'); toast('Opened the PDF in a new tab'); }
+      catch(e){ toast('PDF export needs the hosted app to save files'); }
+    }
+  }
+
+  function makeLogPdf(boreholes){
+    if(!window.jspdf || !window.jspdf.jsPDF){ toast('PDF engine still loading — try again in a moment'); return null; }
+    var doc=new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+    applyScale(doc);
+    var first=true;
+    function sheetsFor(bh){
+      var t=num(bh.terminationDepth)||sheetDepthFor(bh);
+      return Math.max(1, Math.ceil(t/sheetDepthFor(bh)));
+    }
+    var gTotal=0;
+    boreholes.forEach(function(bh){ gTotal+=sheetsFor(bh); });
+    var gIdx=0;
+    boreholes.forEach(function(b){
+      var sheets=sheetsFor(b);
+      for(var s=0;s<sheets;s++){
+        if(!first) doc.addPage();
+        first=false;
+        drawLogSheet(doc, b, s, sheets, gIdx++, gTotal);
+      }
+    });
+    return doc;
+  }
+  function exportLogPdf(boreholes, filename){
+    var doc=makeLogPdf(boreholes);
+    if(!doc) return;
+    var blob=doc.output('blob');
+    if(downloads){
+      downloads.save({filename:filename, data:blob})
+        .then(function(){ toast('Saved '+filename); })
+        .catch(function(err){
+          if(err && err.code==='declined'){ toast('Save cancelled'); return; }
+          toast('Could not save the PDF here');
+        });
+    } else {
+      try{
+        var url=URL.createObjectURL(blob);
+        window.open(url,'_blank');
+        toast('Opened the PDF in a new tab');
+      }catch(e){ toast('PDF export needs the hosted app to save files'); }
+    }
+  }
+
+  /* ============================================================ export */
+  function collectFlags(){
+    var out=[];
+    STATE.boreholes.forEach(function(b){
+      if(b.flag) out.push({type:'Borehole',id:b.id,note:b.flagNote});
+      b.intervals.forEach(function(iv,i){
+        if(iv.flag) out.push({type:'Interval',id:b.id+' #'+(i+1),note:iv.flagNote});
+      });
+    });
+    STATE.dcp.forEach(function(d){ if(d.flag) out.push({type:'DCP',id:d.id,note:d.flagNote}); });
+    STATE.photos.forEach(function(p){ if(p.flag) out.push({type:'Photo',id:p.filename||p.id,note:p.flagNote}); });
+    return out;
+  }
+  function renderExport(){
+    var flags=collectFlags();
+    var badge=document.getElementById('flagBadge');
+    if(flags.length){ badge.hidden=false; badge.textContent=flags.length; } else { badge.hidden=true; }
+    var ivCount=STATE.boreholes.reduce(function(n,b){
+      return n+b.intervals.filter(function(iv){ return iv.description||iv.d.name; }).length; },0);
+    var readingCount=STATE.dcp.reduce(function(n,d){
+      return n+d.readings.filter(function(r){ return r.blows; }).length; },0);
+    document.getElementById('statGrid').innerHTML=
+      '<div class="stat"><div class="n">'+STATE.boreholes.length+'</div><div class="l">Boreholes</div></div>'+
+      '<div class="stat"><div class="n">'+STATE.dcp.length+'</div><div class="l">DCP tests</div></div>'+
+      '<div class="stat"><div class="n">'+STATE.photos.length+'</div><div class="l">Photos</div></div>'+
+      '<div class="stat"><div class="n">'+ivCount+'</div><div class="l">Intervals</div></div>'+
+      '<div class="stat"><div class="n">'+readingCount+'</div><div class="l">Readings</div></div>'+
+      '<div class="stat"><div class="n">'+flags.length+'</div><div class="l">Flagged</div></div>';
+    document.getElementById('flaggedList').innerHTML = flags.length ? flags.map(function(f){
+      return '<div style="margin-bottom:8px;"><strong>'+esc(f.type)+' '+esc(f.id)+'</strong>'+
+        (f.note?'<div class="helptext">'+esc(f.note)+'</div>':'<div class="helptext">No note added.</div>')+'</div>';
+    }).join('') : 'Nothing flagged yet.';
+    if(!STATE.settings) STATE.settings={pdfScale:1, autoDensity:true};
+    document.getElementById('setPdfScale').value = String(STATE.settings.pdfScale||1);
+    document.getElementById('setAutoDensity').checked = STATE.settings.autoDensity!==false;
+    document.getElementById('storageNote').textContent = db
+      ? 'Synced to this artifact\'s shared record — Claude can read it back directly next time.'
+      : 'Saved on this device only (localStorage). Export a file before switching devices.';
+  }
+  function projSlug(){
+    return (STATE.project.jobNumber||STATE.project.projectName||'fieldwork').replace(/[^a-z0-9]+/gi,'_');
+  }
+  function doSave(filename, text){
+    if(downloads){
+      downloads.save({filename:filename, data:text})
+        .then(function(){ toast('Saved '+filename); })
+        .catch(function(err){
+          if(err && err.code==='declined'){ toast('Save cancelled'); return; }
+          clipboardFallback(filename, text);
+        });
+    } else { clipboardFallback(filename, text); }
+  }
+  function clipboardFallback(filename, text){
+    try{
+      navigator.clipboard.writeText(text).then(function(){
+        toast('Downloads unavailable here — copied '+filename+' to clipboard instead');
+      }).catch(function(){ toast('Could not save or copy '+filename); });
+    }catch(e){ toast('Could not save or copy '+filename); }
+  }
+  function sampleSummary(iv){
+    return (iv.samples||[]).map(function(s){
+      return [s.type, (s.from||s.to)?((s.from||'?')+'-'+(s.to||'?')+'m'):'', s.detail].filter(Boolean).join(' ');
+    }).concat(iv.spt?[sptResult(iv.spt)]:[]).concat(iv.pp?['PP '+iv.pp+' kPa']:[]).filter(Boolean).join('; ');
+  }
+  document.getElementById('expPdf').addEventListener('click',function(){
+    if(!STATE.boreholes.length){ toast('No boreholes to export yet'); return; }
+    exportLogPdf(STATE.boreholes, projSlug()+'_borehole_logs.pdf');
+  });
+  document.getElementById('setPdfScale').addEventListener('change',function(){
+    if(!STATE.settings) STATE.settings={};
+    STATE.settings.pdfScale=parseFloat(this.value)||1; save();
+    toast('PDF text size set to '+Math.round(STATE.settings.pdfScale*100)+'%');
+  });
+  document.getElementById('setAutoDensity').addEventListener('change',function(){
+    if(!STATE.settings) STATE.settings={};
+    STATE.settings.autoDensity=this.checked; save();
+    toast(this.checked?'Density will be filled from DCP':'Density left to field entry only');
+  });
+  document.getElementById('expDcpPdf').addEventListener('click',function(){
+    exportDcpPdf(STATE.dcp, projSlug()+'_dcp_tests.pdf');
+  });
+  document.getElementById('expJson').addEventListener('click',function(){
+    var out=JSON.parse(JSON.stringify(STATE));
+    out.boreholes.forEach(function(b){
+      b.intervals.forEach(function(iv){ iv.descriptionResolved = iv.descManual ? iv.description : buildDescription(iv); });
+    });
+    out._standard='Descriptive terms per AS 1726:2017; SPT reporting per AS 1289.6.3.1; DCP per AS 1289.6.3.2';
+    doSave(projSlug()+'_fieldwork.json', JSON.stringify(out,null,2));
+  });
+  document.getElementById('expBh').addEventListener('click',function(){
+    var rows=[['Borehole','From_m','To_m','Description','Moisture','Consistency_field','Excavation','Groundwater',
+               'USCS','Samples_and_tests','DCP_inline','Comments','Flagged','FlagNote']];
+    STATE.boreholes.forEach(function(b){
+      b.intervals.forEach(function(iv){
+        rows.push([b.id, iv.from, iv.to,
+          iv.descManual?iv.description:buildDescription(iv),
+          iv.moisture, iv.consistency, excavationPhrase(iv), iv.groundwater,
+          classSymbol(iv.d), sampleSummary(iv), iv.dcpInline, iv.comments,
+          iv.flag?'Y':'', iv.flagNote]);
+      });
+      (b.observations||[]).forEach(function(o){
+        if(o.text) rows.push([b.id,o.depth,'','OBSERVATION: '+o.text,'','','','','','','','','','']);
+      });
+      (b.remarks||[]).forEach(function(o){
+        if(o.text) rows.push([b.id,o.depth,'','','','','','','','','',o.text,'','']);
+      });      rows.push([b.id+' — end of hole','',b.terminationDepth,
+        'Termination: '+(b.terminationReason||'')+(b.terminationReason==='Other'?': '+b.terminationOther:''),
+        '','','', b.gwEncountered?('GW at '+b.gwDepth+'m'):'GNE','','','','', b.flag?'Y':'', b.flagNote]);
+    });
+    doSave(projSlug()+'_boreholes.csv', rows.map(function(r){ return r.map(csvCell).join(','); }).join('\n'));
+  });
+  document.getElementById('expDcp').addEventListener('click',function(){
+    var maxLen=STATE.dcp.reduce(function(m,d){ return Math.max(m,d.readings.length); },0);
+    var header=['Depth'];
+    STATE.dcp.forEach(function(d){ header.push(d.id+' blows'); header.push(d.id+' soil'); });
+    var rows=[header];
+    for(var i=0;i<maxLen;i++){
+      var row=[i===0?'set':(i*100)+'mm'];
+      STATE.dcp.forEach(function(d){
+        var r=d.readings[i];
+        row.push(r?r.blows:''); row.push(r?(r.soil||d.soilType):'');
+      });
+      rows.push(row);
+    }
+    doSave(projSlug()+'_dcp.csv', rows.map(function(r){ return r.map(csvCell).join(','); }).join('\n'));
+  });
+  document.getElementById('expPhotos').addEventListener('click',function(){
+    var rows=[['Deck','Filename','Caption','Direction_or_Subject','BoreholeID','DepthFrom','DepthTo','Tray','Flagged','FlagNote']];
+    STATE.photos.forEach(function(p){
+      rows.push([p.deck,p.filename,p.caption,p.direction,p.boreholeId,p.depthFrom,p.depthTo,p.tray,p.flag?'Y':'',p.flagNote]);
+    });
+    doSave(projSlug()+'_photos.csv', rows.map(function(r){ return r.map(csvCell).join(','); }).join('\n'));
+  });
+
+  /* ============================================================ boot */
+  function renderAll(){
+    renderHeader(); renderSetup(); renderBoreholeList(); renderDcpList();
+    syncDeckTabs(); renderPhotoList(); renderExport(); renderProjectSheet();
+  }
+  var savedProjects=localLoad();
+  if(savedProjects){
+    Object.keys(savedProjects).forEach(function(id){ PROJECTS[id]=mergeState(savedProjects[id]); });
+  }
+  bindActive();
+  renderAll();
+  var savedTab='setup';
+  try{ savedTab=localStorage.getItem('fieldwork_logger_tab')||'setup'; }catch(e){}
+  showTab(savedTab);
+  initCaps();
+
+  /* ---- PDF engine loading + delivery, hardened for other devices ---- */
+  function jsPdfReady(){ return !!(window.jspdf && window.jspdf.jsPDF); }
+  function ensureJsPdf(){
+    return new Promise(function(res){
+      if(jsPdfReady()) return res(true);
+      var srcs=['jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
+      var i=0;
+      (function next(){
+        if(jsPdfReady()) return res(true);
+        if(i>=srcs.length) return res(false);
+        var s=document.createElement('script');
+        s.src=srcs[i++];
+        s.onload=function(){ res(jsPdfReady()); };
+        s.onerror=next;
+        document.head.appendChild(s);
+      })();
+    });
+  }
+  function isIOS(){
+    return /iP(hone|ad|od)/.test(navigator.userAgent)
+      || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  }
+  // iOS will not take a programmatic download, and a share sheet needs a live
+  // tap. So park the finished PDF on a bar and let the next tap hand it over.
+  function offerSaveTap(blob, filename){
+    var old=document.getElementById('fwlSaveBar');
+    if(old && old.parentNode) old.parentNode.removeChild(old);
+    var bar=document.createElement('div');
+    bar.id='fwlSaveBar';
+    bar.setAttribute('style','position:fixed;left:0;right:0;bottom:0;z-index:9999;'
+      +'background:var(--surface);border-top:2px solid var(--accent);color:var(--ink);'
+      +'padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;'
+      +'gap:10px;align-items:center;font:600 14px/1.3 Arial,Helvetica,sans-serif;'
+      +'box-shadow:0 -6px 18px rgba(0,0,0,.18)');
+    var label=document.createElement('span');
+    label.textContent=filename+' is ready';
+    label.setAttribute('style','flex:1;min-width:0;overflow-wrap:anywhere');
+    var btn=document.createElement('button');
+    btn.type='button'; btn.textContent='Save';
+    btn.setAttribute('style','background:var(--accent);color:var(--accent-ink);border:0;'
+      +'border-radius:8px;padding:11px 20px;font:700 15px Arial,Helvetica,sans-serif');
+    var close=document.createElement('button');
+    close.type='button'; close.textContent='Later';
+    close.setAttribute('style','background:transparent;color:var(--ink-dim);border:0;'
+      +'padding:11px 6px;font:600 14px Arial,Helvetica,sans-serif');
+    function drop(){ if(bar.parentNode) bar.parentNode.removeChild(bar); }
+    btn.addEventListener('click', function(){
+      var file=null;
+      try{ file=new File([blob], filename, {type:'application/pdf'}); }catch(e){}
+      if(file && navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:filename})
+          .then(drop)
+          .catch(function(err){
+            if(err && err.name==='AbortError') return;   // they backed out, keep the bar
+            try{ window.open(URL.createObjectURL(blob),'_blank'); drop(); }catch(e){}
+          });
+        return;
+      }
+      try{ window.open(URL.createObjectURL(blob),'_blank'); drop(); }
+      catch(e){ toast('This browser would not open the PDF'); }
+    });
+    close.addEventListener('click', drop);
+    bar.appendChild(label); bar.appendChild(btn); bar.appendChild(close);
+    document.body.appendChild(bar);
+    toast(filename+' ready - tap Save');
+  }
+  function fallbackDeliver(doc, blob, filename){
+    if(isIOS()){ offerSaveTap(blob, filename); return; }
+    try{ doc.save(filename); toast('Saved '+filename); return; }catch(e){}
+    try{
+      var url=URL.createObjectURL(blob);
+      var w=window.open(url,'_blank');
+      if(w){ toast('Opened the PDF in a new tab'); return; }
+    }catch(e){}
+    toast('This browser blocked the download - open the app online and try again');
+  }
+  // Re-attach the list handlers after an export. If anything threw part-way
+  // through a render, the rows would otherwise stop responding to taps.
+  function recoverUI(){
+    try{ renderBoreholeList(); renderDcpList(); renderPhotoList(); renderExport(); }catch(e){}
+  }
+  function deliverPdf(doc, filename){
+    var blob;
+    try{ blob=doc.output('blob'); }catch(e){ toast('Could not build the PDF'); return; }
+    if(downloads){
+      downloads.save({filename:filename, data:blob})
+        .then(function(){ toast('Saved '+filename); })
+        .catch(function(err){
+          if(err && err.code==='declined'){ toast('Save cancelled'); return; }
+          fallbackDeliver(doc, blob, filename);
+        });
+    } else { fallbackDeliver(doc, blob, filename); }
+  }
+  exportLogPdf=function(boreholes, filename){
+    if(!boreholes || !boreholes.length){ toast('No boreholes to export yet'); return; }
+    toast('Building the borehole log...');
+    ensureJsPdf().then(function(ok){
+      if(!ok){ toast('PDF engine could not load - check your connection and try again'); return; }
+      setTimeout(function(){            // let the page paint before the heavy work
+        try{
+          var doc=makeLogPdf(boreholes);
+          if(doc) deliverPdf(doc, filename);
+        }catch(err){
+          toast('Could not build that log: '+(err && err.message ? err.message : 'unknown error'));
+        }finally{ recoverUI(); }
+      }, 30);
+    });
+  };
+  exportDcpPdf=function(tests, filename){
+    if(!tests || !tests.length){ toast('No DCP tests to export yet'); return; }
+    toast('Building the DCP log...');
+    ensureJsPdf().then(function(ok){
+      if(!ok){ toast('PDF engine could not load - check your connection and try again'); return; }
+      setTimeout(function(){
+        try{
+          var doc=new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'landscape'});
+          applyScale(doc);
+          var pages=Math.ceil(tests.length/4);
+          for(var p=0;p<pages;p++){
+            if(p>0) doc.addPage();
+            drawDcpPage(doc, tests.slice(p*4,p*4+4), p, pages);
+          }
+          deliverPdf(doc, filename);
+        }catch(err){
+          toast('Could not build that log: '+(err && err.message ? err.message : 'unknown error'));
+        }finally{ recoverUI(); }
+      }, 30);
+    });
+  };
+})();
+</script>
+
+<script>
+// Register the offline worker. Without it the app still runs; it just needs a
+// connection the first time instead of never.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
+</body></html>
