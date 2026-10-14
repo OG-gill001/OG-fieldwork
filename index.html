@@ -324,6 +324,8 @@
       <div class="btn-row">
         <button class="btn primary" id="expPdf">⤓ Borehole logs (.pdf)</button>
         <button class="btn primary" id="expDcpPdf">⤓ DCP logs (.pdf)</button>
+        <button class="btn primary" id="expSitePptx">⤓ Site photos (.pptx)</button>
+        <button class="btn primary" id="expBhPptx">⤓ Borehole photos (.pptx)</button>
         <button class="btn" id="expJson">⤓ All data (.json)</button>
         <button class="btn" id="expBh">⤓ Boreholes (.csv)</button>
         <button class="btn" id="expDcp">⤓ DCP (.csv)</button>
@@ -370,6 +372,7 @@
 <div class="toast" id="toast"></div>
 <script src="jspdf.umd.min.js"></script>
 <script src="opifex-logo.js"></script>
+<script src="pptxgen.bundle.js"></script>
 
 <nav class="tabbar">
   <button data-tab="setup" aria-current="true"><span class="ic">📋</span>Setup</button>
@@ -658,7 +661,70 @@
   var ACTIVE = null;   // active project id
   var STATE = null;    // === PROJECTS[ACTIVE]
   var db=null, dbSaveTimer=null, downloads=null, currentDeck='site';
-  var photoThumbs = {}; // local-only previews, never persisted
+  var photoThumbs = {}; // in-memory previews; the real images live in IndexedDB
+
+  /* ---- photo images ----------------------------------------------------
+     Photographs are far too big for the project record, which has to stay
+     small enough to sync. They go in their own IndexedDB store keyed by the
+     photo id, and only a small preview is held in memory.
+  ---------------------------------------------------------------------- */
+  var IDB=null;
+  function idbOpen(){
+    if(IDB) return IDB;
+    IDB = new Promise(function(res, rej){
+      var rq;
+      try{ rq = indexedDB.open('fwl_photos', 1); }catch(e){ return rej(e); }
+      rq.onupgradeneeded = function(){ rq.result.createObjectStore('img'); };
+      rq.onsuccess = function(){ res(rq.result); };
+      rq.onerror   = function(){ rej(rq.error); };
+    });
+    return IDB;
+  }
+  function idbPut(key, val){
+    return idbOpen().then(function(db){ return new Promise(function(res, rej){
+      var tx=db.transaction('img','readwrite');
+      tx.objectStore('img').put(val, key);
+      tx.oncomplete=function(){ res(true); };
+      tx.onerror   =function(){ rej(tx.error); };
+    });});
+  }
+  function idbGet(key){
+    return idbOpen().then(function(db){ return new Promise(function(res, rej){
+      var tx=db.transaction('img','readonly'), rq=tx.objectStore('img').get(key);
+      rq.onsuccess=function(){ res(rq.result||null); };
+      rq.onerror  =function(){ rej(rq.error); };
+    });}).catch(function(){ return null; });
+  }
+  function idbDel(key){
+    return idbOpen().then(function(db){ return new Promise(function(res){
+      var tx=db.transaction('img','readwrite');
+      tx.objectStore('img').delete(key);
+      tx.oncomplete=function(){ res(true); };
+      tx.onerror   =function(){ res(false); };
+    });}).catch(function(){ return false; });
+  }
+  // A phone camera gives 4000 px and 5 MB. The deck prints the photo about
+  // 470 pt wide, so anything past ~1600 px is weight with no detail gained.
+  function shrinkImage(file, maxPx, quality){
+    return new Promise(function(res, rej){
+      var fr=new FileReader();
+      fr.onerror=function(){ rej(new Error('could not open that file')); };
+      fr.onload=function(){
+        var img=new Image();
+        img.onerror=function(){ rej(new Error('that file is not an image')); };
+        img.onload=function(){
+          var s=Math.min(1, (maxPx||1600)/Math.max(img.width, img.height));
+          var cw=Math.max(1, Math.round(img.width*s)), ch=Math.max(1, Math.round(img.height*s));
+          var c=document.createElement('canvas'); c.width=cw; c.height=ch;
+          c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+          try{ res(c.toDataURL('image/jpeg', quality||0.72)); }
+          catch(e){ rej(new Error('could not process that image')); }
+        };
+        img.src=fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
 
   function blankProjectRecord(name){
     return {project:{client:'',projectName:name||'',jobNumber:'',location:'',fieldEngineer:'',date:''},
@@ -711,7 +777,7 @@
   }
   function blankPhoto(deck){
     return {id:uid('ph'), deck:deck, filename:'', caption:'', direction:'', boreholeId:'',
-      depthFrom:'', depthTo:'', tray:'', flag:false, flagNote:''};
+      depthFrom:'', depthTo:'', tray:'', hasImage:false, flag:false, flagNote:''};
   }
 
   // migrate older saved shapes forward
@@ -1715,7 +1781,9 @@
            '</div>');
       return '<div class="card">'+
         '<div class="photo-row">'+
-          (photoThumbs[p.id] ? '<img class="photo-thumb" src="'+photoThumbs[p.id]+'" alt="">' : '<div class="photo-thumb"></div>')+
+          (photoThumbs[p.id]
+            ? '<img class="photo-thumb" data-thumb="'+p.id+'" src="'+photoThumbs[p.id]+'" alt="">'
+            : '<div class="photo-thumb" data-thumb="'+p.id+'"></div>')+
           '<div class="photo-fields">'+
             '<input type="file" accept="image/*" data-pick="'+p.id+'" style="margin-bottom:6px;">'+
             '<input class="mono" data-p="filename" data-pid="'+p.id+'" value="'+esc(p.filename)+'" placeholder="filename.jpg">'+
@@ -1739,17 +1807,38 @@
         var p=STATE.photos.find(function(x){return x.id===el.dataset.pick;});
         var file=el.files && el.files[0]; if(!file) return;
         if(!p.filename){ p.filename=file.name; save(); }
-        try{
-          var reader=new FileReader();
-          reader.onload=function(){ photoThumbs[p.id]=reader.result; renderPhotoList(); };
-          reader.readAsDataURL(file);
-        }catch(e){}
+        toast('Saving photo...');
+        shrinkImage(file, 1600, 0.72)
+          .then(function(dataUrl){
+            photoThumbs[p.id]=dataUrl;
+            p.hasImage=true; save();
+            return idbPut(p.id, dataUrl);
+          })
+          .then(function(){ toast('Photo saved'); renderPhotoList(); })
+          .catch(function(err){
+            p.hasImage=false; save();
+            toast('Could not save that photo: '+(err && err.message ? err.message : 'unknown error'));
+            renderPhotoList();
+          });
       });
     });
     host.querySelectorAll('[data-remove-photo]').forEach(function(el){
       el.addEventListener('click',function(){
-        STATE.photos=STATE.photos.filter(function(x){return x.id!==el.dataset.removePhoto;});
+        var pid=el.dataset.removePhoto;
+        STATE.photos=STATE.photos.filter(function(x){return x.id!==pid;});
+        delete photoThumbs[pid];
+        idbDel(pid);
         save(); renderPhotoList();
+      });
+    });
+    // pull back any image saved on an earlier visit
+    items.forEach(function(p){
+      if(photoThumbs[p.id] || !p.hasImage) return;
+      idbGet(p.id).then(function(d){
+        if(!d) return;
+        photoThumbs[p.id]=d;
+        var img=host.querySelector('[data-thumb="'+p.id+'"]');
+        if(img) img.outerHTML='<img class="photo-thumb" data-thumb="'+p.id+'" src="'+d+'" alt="">';
       });
     });
   }
@@ -2789,6 +2878,8 @@
     }
     doSave(projSlug()+'_dcp.csv', rows.map(function(r){ return r.map(csvCell).join(','); }).join('\n'));
   });
+  document.getElementById('expSitePptx').addEventListener('click',function(){ exportDeck('site'); });
+  document.getElementById('expBhPptx').addEventListener('click',function(){ exportDeck('bh'); });
   document.getElementById('expPhotos').addEventListener('click',function(){
     var rows=[['Deck','Filename','Caption','Direction_or_Subject','BoreholeID','DepthFrom','DepthTo','Tray','Flagged','FlagNote']];
     STATE.photos.forEach(function(p){
@@ -2861,7 +2952,7 @@
     function drop(){ if(bar.parentNode) bar.parentNode.removeChild(bar); }
     btn.addEventListener('click', function(){
       var file=null;
-      try{ file=new File([blob], filename, {type:'application/pdf'}); }catch(e){}
+      try{ file=new File([blob], filename, {type: blob.type || 'application/octet-stream'}); }catch(e){}
       if(file && navigator.canShare && navigator.canShare({files:[file]})){
         navigator.share({files:[file], title:filename})
           .then(drop)
@@ -2894,6 +2985,214 @@
   function recoverUI(){
     try{ renderBoreholeList(); renderDcpList(); renderPhotoList(); renderExport(); }catch(e){}
   }
+  /* ============================================================ photo decks
+     Built to the measurements of the firm's own Site Photos / Borehole
+     Photography slides (780 x 540 pt). Positions below are those points
+     converted to inches, which is what PptxGenJS works in.
+  ========================================================================= */
+  var PT=72;
+  function inch(pt){ return pt/PT; }
+  var OG_GREEN='00AE00', OG_GREY='808080';
+
+  function pptxReady(){ return typeof PptxGenJS!=='undefined'; }
+  function ensurePptx(){
+    return new Promise(function(res){
+      if(pptxReady()) return res(true);
+      var srcs=['pptxgen.bundle.js','https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'];
+      var i=0;
+      (function next(){
+        if(pptxReady()) return res(true);
+        if(i>=srcs.length) return res(false);
+        var s=document.createElement('script');
+        s.src=srcs[i++];
+        s.onload=function(){ res(pptxReady()); };
+        s.onerror=next;
+        document.head.appendChild(s);
+      })();
+    });
+  }
+
+  // The furniture every sheet carries: rule, logo, title, header block,
+  // project number, sheet number, footer and the green/grey bar.
+  function deckChrome(slide, title, headerLines, sheetNo, sheetCount, barY, barX, barW){
+    var pr=STATE.project;
+    slide.addShape('line', {x:inch(628.1), y:inch(17.9), w:0, h:inch(485.9),
+      line:{color:OG_GREEN, width:1.5}});
+    if(typeof __OPIFEX_LOGO!=='undefined')
+      slide.addImage({data:__OPIFEX_LOGO, x:inch(638.6), y:inch(18.5), w:inch(124.6), h:inch(39.8)});
+    slide.addText(title, {x:inch(631.4), y:inch(82.6), w:inch(130), h:inch(39.8),
+      fontFace:'Arial', fontSize:12, bold:true, align:'center', valign:'top', color:'000000'});
+
+    // not bold - his markup on the borehole sheet
+    slide.addText(headerLines.join('\n'), {x:inch(631.4), y:inch(139.6), w:inch(148.6), h:inch(213.3),
+      fontFace:'Arial', fontSize:10, bold:false, color:'000000', valign:'top', lineSpacingMultiple:1.15});
+
+    // 9 pt, not 10: PptxGenJS wraps where PowerPoint's own box did not, and
+    // "Project #" broke onto a second line over the top of "Sheet No."
+    slide.addText('Project #', {x:inch(639), y:inch(472.3), w:inch(50), h:inch(13),
+      fontFace:'Arial', fontSize:8.5, color:'000000', margin:0});
+    slide.addText('Sheet No.', {x:inch(639), y:inch(487.9), w:inch(50), h:inch(14.6),
+      fontFace:'Arial', fontSize:8.5, color:'000000', margin:0});
+    slide.addShape('line', {x:inch(688.8), y:inch(472.3), w:0, h:inch(24),
+      line:{color:OG_GREEN, width:1}});
+    slide.addText((pr.jobNumber||'')+(pr.jobNumber?'-001':''), {x:inch(692.5), y:inch(471.6),
+      w:inch(88), h:inch(13.6), fontFace:'Arial', fontSize:8.5, color:'000000', margin:0});
+    slide.addText(sheetNo+' of '+sheetCount, {x:inch(694), y:inch(487), w:inch(60), h:inch(20.3),
+      fontFace:'Arial', fontSize:8.5, color:'000000', margin:0});
+
+    slide.addShape('line', {x:inch(24.1), y:inch(519.5), w:inch(726.8), h:0,
+      line:{color:OG_GREEN, width:1}});
+    slide.addText('160 Beaufort Street, Perth WA 6000', {x:inch(26), y:inch(519), w:inch(300), h:inch(12.5),
+      fontFace:'Arial', fontSize:7, color:'000000'});
+
+    // the ten-segment bar, alternating green and grey
+    var segW=(barW||510.3)/10, x0=(barX==null?57:barX);
+    for(var i=0;i<10;i++)
+      slide.addShape('rect', {x:inch(x0+i*segW*1.0074), y:inch(barY), w:inch(segW*0.993), h:inch(4.5),
+        fill:{color: i%2===0 ? OG_GREEN : 'FFFFFF'}, line:{width:0}});
+  }
+
+  function headerCommon(){
+    var pr=STATE.project;
+    return ['Client: '+(pr.client||''), '',
+            'Project: '+(pr.projectName||''), '',
+            'Location: '+(pr.location||''), '',
+            'Date: '+fmtDate(pr.date)];
+  }
+
+  function makeSitePptx(photos, images){
+    var p=new PptxGenJS();
+    p.defineLayout({name:'OG', width:inch(780), height:inch(540)});
+    p.layout='OG';
+    var perSheet=3, sheets=Math.max(1, Math.ceil(photos.length/perSheet));
+    // hero frame, then the two below it
+    var frames=[
+      {img:{x:87.7, y:18.8, w:417.9, h:202.1}, cap:{x:150, y:231.9, w:306, h:13.1}},
+      {img:{x:6.6,  y:285.0, w:292.3, h:164.4}, cap:{x:10,  y:456.6, w:285, h:13.1}},
+      {img:{x:318.8,y:283.6, w:292.3, h:164.4}, cap:{x:318, y:456.6, w:285, h:13.1}}
+    ];
+    for(var s=0; s<sheets; s++){
+      var slide=p.addSlide();
+      deckChrome(slide, 'Project\nPhotography',
+        headerCommon().concat(['', 'Test: General site photos']),
+        s+1, sheets, 497.6, 57, 510.3);
+      for(var k=0; k<perSheet; k++){
+        var idx=s*perSheet+k, ph=photos[idx];
+        if(!ph) break;
+        var f=frames[k], img=images[ph.id];
+        if(img) slide.addImage({data:img, x:inch(f.img.x), y:inch(f.img.y), w:inch(f.img.w), h:inch(f.img.h)});
+        else slide.addShape('rect', {x:inch(f.img.x), y:inch(f.img.y), w:inch(f.img.w), h:inch(f.img.h),
+          fill:{color:'EFEFEF'}, line:{color:'BBBBBB', width:1}});
+        var txt='Photograph '+(idx+1)+':  '+(ph.caption||'')+
+                (ph.direction?(', '+ph.direction.charAt(0).toLowerCase()+ph.direction.slice(1)):'')+'.';
+        // only the first photograph of the deck is green; the rest are black
+        slide.addText(txt, {x:inch(f.cap.x), y:inch(f.cap.y), w:inch(f.cap.w), h:inch(26),
+          fontFace:'Arial', fontSize:10, bold:true, align:'center', valign:'top',
+          color: idx===0 ? OG_GREEN : '000000'});
+      }
+    }
+    return p;
+  }
+
+  function makeBhPptx(photos, images){
+    var p=new PptxGenJS();
+    p.defineLayout({name:'OG', width:inch(780), height:inch(540)});
+    p.layout='OG';
+    var perSheet=2, sheets=Math.max(1, Math.ceil(photos.length/perSheet));
+    var strips=[
+      {label:{x:282.8, y:14.9}, img:{x:62.6, y:51.5, w:466.9, h:163.3}, lx:24.6, rx:529.5, bar:225.9, barX:65.4},
+      {label:{x:283.6, y:266.5}, img:{x:67.5, y:300.9, w:466.9, h:163.3}, lx:28.0, rx:536.3, bar:481.1, barX:71.6}
+    ];
+    for(var s=0; s<sheets; s++){
+      var slide=p.addSlide();
+      deckChrome(slide, 'Borehole\nPhotography',
+        headerCommon().concat(['', 'Borehole: As annotated', '', 'Inclination (°):  90', '', 'Depths: As annotated']),
+        s+1, sheets, strips[1].bar, strips[1].barX, 463.6);
+      for(var k=0; k<perSheet; k++){
+        var idx=s*perSheet+k, ph=photos[idx];
+        if(!ph) break;
+        var st=strips[k], img=images[ph.id];
+        slide.addText(ph.boreholeId||'BH', {x:inch(st.label.x), y:inch(st.label.y), w:inch(50.8), h:inch(24.1),
+          fontFace:'Arial', fontSize:14, bold:true, align:'center', color:'000000',
+          line:{color:OG_GREEN, width:1}});
+        if(img) slide.addImage({data:img, x:inch(st.img.x), y:inch(st.img.y), w:inch(st.img.w), h:inch(st.img.h)});
+        else slide.addShape('rect', {x:inch(st.img.x), y:inch(st.img.y), w:inch(st.img.w), h:inch(st.img.h),
+          fill:{color:'EFEFEF'}, line:{color:'BBBBBB', width:1}});
+        // depth ticks down both sides, read off the recorded run
+        var a=num(ph.depthFrom), b2=num(ph.depthTo);
+        if(a!==null && b2!==null && b2>a){
+          var n=5, step=(b2-a)/n, h=st.img.h, top=st.img.y;
+          for(var i=0;i<=n;i++){
+            var yy=top+(h/n)*i-10;
+            slide.addText((a+step*i).toFixed(1)+' m', {x:inch(st.lx-14), y:inch(yy), w:inch(50), h:inch(20),
+              fontFace:'Arial', fontSize:12, color:'000000', align:'right'});
+            if(i<n) slide.addText((a+step*(i+1)).toFixed(1)+' m', {x:inch(st.rx), y:inch(yy), w:inch(52), h:inch(20),
+              fontFace:'Arial', fontSize:12, color:'000000'});
+          }
+        }
+        if(k===0) for(var j=0;j<10;j++){
+          var segW=463.6/10;
+          slide.addShape('rect', {x:inch(st.barX+j*segW*1.0074), y:inch(st.bar), w:inch(segW*0.993), h:inch(7.9),
+            fill:{color: j%2===0 ? OG_GREEN : 'FFFFFF'}, line:{width:0}});
+        }
+      }
+    }
+    return p;
+  }
+
+  function loadDeckImages(photos){
+    return Promise.all(photos.map(function(ph){
+      if(photoThumbs[ph.id]) return Promise.resolve([ph.id, photoThumbs[ph.id]]);
+      if(!ph.hasImage) return Promise.resolve([ph.id, null]);
+      return idbGet(ph.id).then(function(d){ return [ph.id, d]; });
+    })).then(function(pairs){
+      var out={}; pairs.forEach(function(pr2){ if(pr2[1]) out[pr2[0]]=pr2[1]; }); return out;
+    });
+  }
+
+  function exportDeck(deck){
+    var photos=STATE.photos.filter(function(p){ return p.deck===deck; });
+    if(!photos.length){ toast('No '+(deck==='site'?'site':'borehole')+' photos logged yet'); return; }
+    var missing=photos.filter(function(p){ return !p.hasImage && !photoThumbs[p.id]; }).length;
+    toast('Building the deck...');
+    ensurePptx().then(function(ok){
+      if(!ok){ toast('PowerPoint builder could not load - check your connection'); return; }
+      return loadDeckImages(photos).then(function(images){
+        var job=(STATE.project.jobNumber||'photos').replace(/[^\w.-]+/g,'_');
+        var p = deck==='site' ? makeSitePptx(photos, images) : makeBhPptx(photos, images);
+        var name = job+(deck==='site'?'_site_photos.pptx':'_borehole_photos.pptx');
+        return p.write('blob').then(function(blob){
+          deliverBlob(blob, name);
+          toast(missing ? ('Deck built - '+missing+' photo(s) had no image') : 'Deck built');
+        });
+      });
+    }).catch(function(err){
+      toast('Could not build the deck: '+(err && err.message ? err.message : 'unknown error'));
+    }).then(function(){ recoverUI(); });
+  }
+
+  // Same delivery path as the PDFs: the host app if it offers one, the iOS
+  // share sheet on an iPhone, an ordinary download everywhere else.
+  function deliverBlob(blob, filename){
+    if(downloads){
+      downloads.save({filename:filename, data:blob})
+        .then(function(){ toast('Saved '+filename); })
+        .catch(function(err){
+          if(err && err.code==='declined'){ toast('Save cancelled'); return; }
+          if(isIOS()){ offerSaveTap(blob, filename); return; }
+          try{ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename;
+               document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
+        });
+      return;
+    }
+    if(isIOS()){ offerSaveTap(blob, filename); return; }
+    try{
+      var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      toast('Saved '+filename);
+    }catch(e){ toast('This browser blocked the download'); }
+  }
+
   function deliverPdf(doc, filename){
     var blob;
     try{ blob=doc.output('blob'); }catch(e){ toast('Could not build the PDF'); return; }
