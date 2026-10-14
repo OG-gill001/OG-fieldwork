@@ -509,7 +509,9 @@
         if(sa) secDesc.push(sa);
       }
       if(d.secondaryPct || secDesc.length){
-        secondBits.push(secondaryNoun(d.secondary) + (d.secondaryPct ? ' ('+d.secondaryPct+'%)' : ''));
+        // the field asks for "10-15" but people type "10-15%" - don't print it twice
+        var pct = String(d.secondaryPct||'').trim().replace(/%+$/,'');
+        secondBits.push(secondaryNoun(d.secondary) + (pct ? ' ('+pct+'%)' : ''));
         secDesc.forEach(function(x){ secondBits.push(x); });
       }
     }
@@ -1866,14 +1868,18 @@
     doc.setFontSize=function(pt){ return orig(pt*PDF_SCALE); };
   }
   var COLS = [
-    {k:'exc',   w:8,  label:'Excavation resistance', rot:true},
+    // 10 mm, not 8: a short band carrying "Very Hard to Refusal" needs two
+    // stacked lines, and at 8 mm they sat on top of each other.
+    {k:'exc',   w:10, label:'Excavation resistance', rot:true},
     {k:'gw',    w:8,  label:'Groundwater',           rot:true},
     {k:'depth', w:11, label:'Depth (m)',             rot:true},
     {k:'cls',   w:10, label:'Classification',        rot:true},
-    {k:'desc',  w:73, label:'Material Description',  rot:false,
+    {k:'desc',  w:75, label:'Material Description',  rot:false,
       sub:'Soil type, plasticity OR particle size & angularity, colour; secondary; minor components.'},
     {k:'moist', w:8,  label:'Moisture Condition',    rot:true},
-    {k:'cons',  w:14, label:'Consistency / Relative Density', rot:true},
+    // Narrower than it was: the width went to the description instead. Where a
+    // long term will not fit, the short form (MD, VD, VSt) is printed.
+    {k:'cons',  w:10, label:'Consistency / Relative Density', rot:true},
     {k:'dcp',   w:9,  label:'DCP',                   rot:true},
     {k:'samp',  w:9,  label:'Samples or Field tests',rot:true},
     {k:'rem',   w:44, label:'Field Records/Comments',rot:false,
@@ -2018,19 +2024,40 @@
   // Horizontal, wrapped inside its box and centred in the run. Used for
   // Consistency / Relative Density, which reads better across the column
   // than rotated.
-  function htext(doc, txt, x, w, yTop, yBot, size){
+  // AS 1726 field symbols, so a narrow column can still carry the full range.
+  var CONS_SHORT = {'Very Soft':'VS','Very Stiff':'VSt','Very Loose':'VL',
+    'Very Dense':'VD','Medium Dense':'MD','Soft':'S','Firm':'F','Stiff':'St',
+    'Hard':'H','Friable':'Fr','Loose':'L','Dense':'D'};
+  function consistencyShort(txt){
+    var s=String(txt||'');
+    // longest first, so "Very Dense" is not eaten by "Dense"
+    Object.keys(CONS_SHORT).sort(function(a,b){ return b.length-a.length; })
+      .forEach(function(k){ s=s.split(k).join(CONS_SHORT[k]); });
+    return s;
+  }
+  // `alt` is a shorter wording to fall back on before the type gets too small
+  // to read. Nothing is ever clipped: if both forms are too long it keeps
+  // shrinking instead of spilling into the neighbouring band.
+  function htext(doc, txt, x, w, yTop, yBot, size, alt){
     if(!txt) return;
     var availH=(yBot-yTop)-0.8, maxW=w-1.6;
     if(availH<=1.2) return;
-    var fs=size||6.5, lines, lh;
     doc.setFont('helvetica','normal');
-    for(var g=0; g<18; g++){
+    var choice=String(txt), base=size||6.5, fs=base, lines, lh;
+    function measure(){
       doc.setFontSize(fs);
       lh=fs*0.42*PDF_SCALE;
-      lines=doc.splitTextToSize(String(txt), maxW);
-      if(lines.length*lh<=availH || fs<=4) break;
-      fs-=0.25;
+      lines=doc.splitTextToSize(choice, maxW);
+      return lines.length*lh;
     }
+    for(var pass=0; pass<2; pass++){
+      fs=base;
+      while(measure()>availH && fs>5.5) fs-=0.25;      // 5.5 pt is the floor
+      if(measure()<=availH) break;
+      if(pass===0 && alt && String(alt)!==choice){ choice=String(alt); continue; }
+      break;
+    }
+    while(measure()>availH && fs>4) fs-=0.25;          // last resort
     var startY=(yTop+yBot)/2-(lines.length*lh)/2+lh*0.72;
     for(var i=0;i<lines.length;i++)
       doc.text(lines[i], x+w/2, startY+i*lh, {align:'center'});
@@ -2041,23 +2068,25 @@
     if(avail<=1.2) return;
     var s=String(txt), mid=(yTop+yBot)/2, w=colW||8, fs=size||8;
     doc.setFont('helvetica','normal');
-    function stack(lines, lineH){
-      var startX=cx-((lines.length-1)*lineH)/2;
-      for(var i=0;i<lines.length;i++) vdraw(doc, lines[i], startX+i*lineH, mid);
-    }
-    for(var guard=0; guard<16; guard++){
+    // Every line must be drawn. Where the stack is a shade too wide for the
+    // column, the spacing is squeezed before the type shrinks, and a line is
+    // never dropped - a clipped "Very Hard to Refusal" is a lost observation.
+    var lines, lineH;
+    for(var guard=0; guard<24; guard++){
       doc.setFontSize(fs);
-      var lineH=fs*0.3528*1.12;
-      var maxLines=Math.max(1, Math.floor((w-0.5)/lineH));
-      var lines=doc.splitTextToSize(s, avail);
-      if(lines.length<=maxLines){ stack(lines, lineH); return; }
-      if(fs<=5) break;
+      lines=doc.splitTextToSize(s, avail);
+      // a single line needs no gap; stacked lines get real leading, or they
+      // read as one smudged block in an 8-10 mm column
+      lineH=fs*0.3528*(lines.length>1 ? 1.30 : 1.12);
+      if(lines.length*lineH<=w-1.4) break;
+      var tight=(w-1.4)/lines.length;
+      if(tight>=fs*0.3528*1.18){ lineH=tight; break; }   // tighter leading, same size
+      if(fs<=4.2) break;
       fs-=0.25;
     }
-    fs=Math.max(fs,5); doc.setFontSize(fs);
-    var lh=fs*0.3528*1.12;
-    var ml=Math.max(1, Math.floor((w-0.5)/lh));
-    stack(doc.splitTextToSize(s, avail).slice(0, ml), lh);
+    doc.setFontSize(fs);
+    var startX=cx-((lines.length-1)*lineH)/2;
+    for(var i=0;i<lines.length;i++) vdraw(doc, lines[i], startX+i*lineH, mid);
   }
   // Round up to the next whole metre, adding one more only when that would
   // leave almost no headroom: 2.2 m -> 3 m, 2.0 m -> 3 m, 3.2 m -> 4 m.
@@ -2347,16 +2376,33 @@
     });
 
     // Side columns, drawn exactly as the readings group them
-    [['exc','exc'],['gw','gw'],['moist','moist'],['cons','cons']].forEach(function(p){
+    [['exc','exc'],['moist','moist'],['cons','cons']].forEach(function(p){
       var vals=rows.map(function(r4){ return r4[p[0]]; });
       runs(vals).forEach(function(run){
         var yT=rowTop(run.from), yB=rowTop(run.to+1);
         var cc=C[p[1]];
-        if(p[1]==='cons') htext(doc, run.value, cc.x, cc.w, yT, yB, 6.5);
+        if(p[1]==='cons') htext(doc, run.value, cc.x, cc.w, yT, yB, 6.5, consistencyShort(run.value));
         else vtext(doc, run.value, cc.x+cc.w/2, yT, yB, cc.w, 8);
         if(run.to+1<nRows){ doc.setLineWidth(0.12); doc.line(cc.x,yB,cc.x+cc.w,yB); doc.setLineWidth(0.25); }
       });
     });
+
+    // Groundwater: the label sits centred on the column whatever the hole did,
+    // and a struck water level is marked with a light blue rule at its depth.
+    (function(){
+      var cc=C.gw, gd=num(b.gwDepth);
+      vtext(doc, b.gwEncountered ? 'Groundwater' : 'Groundwater Not Encountered',
+            cc.x+cc.w/2, bodyTop, bodyBot, cc.w, 8);
+      if(b.gwEncountered && gd!==null && gd>d0 && gd<=d0+SHEET_M){
+        var gy=yAtDepth(gd);
+        doc.setDrawColor(102,170,224); doc.setLineWidth(0.7);
+        doc.line(cc.x, gy, cc.x+cc.w, gy);
+        doc.setDrawColor(0,0,0); doc.setLineWidth(0.25);
+        doc.setTextColor(102,170,224); doc.setFontSize(5.5);
+        doc.text(gd.toFixed(2)+'m', cc.x+cc.w-0.6, gy-0.8, {align:'right'});
+        doc.setTextColor(0,0,0);
+      }
+    })();
 
     // interval boundary rules
     doc.setLineWidth(0.15);
@@ -2387,9 +2433,11 @@
         doc.setFont('helvetica','normal'); doc.setFontSize(fs);
         doc.text(lines, col.x+1.5, yy+3.4);   // sits clear of the rule above
         if(it.cls){
-          doc.setFontSize(7);
-          doc.text(doc.splitTextToSize(it.cls, C.cls.w-2),
-                   C.cls.x+C.cls.w/2, want+3.4, {align:'center'});
+          // a dual symbol is one token - shrink it rather than break "GW-GP"
+          // across two lines as "GW-G" / "P"
+          var cfs=7; doc.setFontSize(cfs);
+          while(doc.getTextWidth(it.cls)>C.cls.w-2 && cfs>4.5){ cfs-=0.25; doc.setFontSize(cfs); }
+          doc.text(it.cls, C.cls.x+C.cls.w/2, want+3.4, {align:'center'});
         }
         cursor=yy+lines.length*lh;
       });
@@ -2407,7 +2455,7 @@
         if(st===null) st=sf+ROW_M;
         if(st<=d0 || sf>=d0+SHEET_M) return;
         var yT=yAtDepth(Math.max(sf,d0)), yB=yAtDepth(Math.min(st,d0+SHEET_M));
-        var x1=C.samp.x+1.5, x2=C.samp.x+C.samp.w-1.5;
+        var x1=C.samp.x+0.3, x2=C.samp.x+C.samp.w-0.3;   // across the whole box
         doc.setLineWidth(0.2);
         doc.line(x1,yT,x2,yT); doc.line(x1,yB,x2,yB);
         doc.line(x1,yT,x2,yB); doc.line(x2,yT,x1,yB);
@@ -2898,8 +2946,6 @@
 </script>
 
 <script>
-// Register the offline worker. Without it the app still runs; it just needs a
-// connection the first time instead of never.
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('sw.js').catch(function(){});

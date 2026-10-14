@@ -2,12 +2,18 @@
 // Everything the app needs is precached on install, so once it has been opened
 // one time it runs with no connection at all: a dead spot on site, aeroplane
 // mode, a SIM with nothing left on it.
-// Bump CACHE whenever index.html changes, or phones keep serving the old copy.
-var CACHE = 'og-fieldwork-v1';
+// Bump CACHE whenever any of these files change, or phones keep the old copy.
+var CACHE = 'og-fieldwork-v3';
 
+// The PDF engine and the logo must be precached, not left to runtime caching.
+// On the very first visit the worker is not yet controlling the page, so those
+// two never pass through it - and a phone taken offline after one visit would
+// open the app but fail to build a log sheet.
 var ASSETS = [
   './',
   './index.html',
+  './jspdf.umd.min.js',
+  './opifex-logo.js',
   './manifest.webmanifest',
   './icon-180.png',
   './icon-192.png',
