@@ -2689,6 +2689,17 @@
       doc.text(doc.splitTextToSize(note, w-4), x+2, pb+4);
     }
   }
+  // Spread the tests evenly across the sheets instead of filling fours and
+  // leaving a remainder: 5 goes 3+2, 6 goes 3+3, 7 goes 4+3, 9 goes 3+3+3.
+  // Chart width stays as if four were on the page, so a chart is the same
+  // size on every sheet and they still compare against each other.
+  function dcpPageSplit(n, perPage){
+    perPage=perPage||4;
+    var pages=Math.max(1, Math.ceil(n/perPage));
+    var base=Math.floor(n/pages), extra=n%pages, out=[];
+    for(var i=0;i<pages;i++) out.push(base + (i<extra ? 1 : 0));
+    return out;
+  }
   function drawDcpPage(doc, tests, pageIdx, pageCount){
     var pr=STATE.project, L=8, R=289, T=8;
     var blockH=28, bodyBot=210-8-blockH;
@@ -2733,10 +2744,11 @@
     if(!tests.length){ toast('No DCP tests to export yet'); return; }
     var doc=new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'landscape'});
     applyScale(doc);
-    var pages=Math.ceil(tests.length/4);
-    for(var p=0;p<pages;p++){
+    var split=dcpPageSplit(tests.length,4), from=0;
+    for(var p=0;p<split.length;p++){
       if(p>0) doc.addPage();
-      drawDcpPage(doc, tests.slice(p*4,p*4+4), p, pages);
+      drawDcpPage(doc, tests.slice(from, from+split[p]), p, split.length);
+      from+=split[p];
     }
     var blob=doc.output('blob');
     if(downloads){
@@ -3442,10 +3454,11 @@
         try{
           var doc=new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'landscape'});
           applyScale(doc);
-          var pages=Math.ceil(tests.length/4);
-          for(var p=0;p<pages;p++){
+          var split=dcpPageSplit(tests.length,4), from=0;
+          for(var p=0;p<split.length;p++){
             if(p>0) doc.addPage();
-            drawDcpPage(doc, tests.slice(p*4,p*4+4), p, pages);
+            drawDcpPage(doc, tests.slice(from, from+split[p]), p, split.length);
+            from+=split[p];
           }
           deliverPdf(doc, filename);
         }catch(err){
