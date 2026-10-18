@@ -1620,7 +1620,7 @@
        '<label class="field"><span>Reviewed by</span><input class="mono" data-dcp="reviewed" value="'+esc(d.reviewed)+'" placeholder="FG"></label>'+
        '<label class="field"><span>Review date</span><input data-dcp="reviewDate" value="'+esc(d.reviewDate||'')+'" placeholder="dd/mm/yyyy"></label></div>';
     h+='<hr class="sep"><h2 style="margin:10px 0;">Blow counts (per 100 mm)</h2>';
-    h+='<p class="helptext" style="margin-bottom:8px;">Row 0 is the seating “set” drop (AS 1289.6.3.2). Use <span class="mono">8 HB</span> for hammer-bounce refusal or <span class="mono">12+ R</span> for refusal instead of a number. Soil type follows the test default unless you override a row — if sand turns to clay partway and the split depth isn\'t certain, override the nearest row and flag the test.</p>';
+    h+='<p class="helptext" style="margin-bottom:8px;">Every row is a 100 mm increment and is labelled by the depth it reaches, so the first reading is the top 100 mm. Use <span class="mono">8 HB</span> for hammer-bounce refusal or <span class="mono">12+ R</span> for refusal instead of a number. Soil type follows the test default unless you override a row — if sand turns to clay partway and the split depth isn\'t certain, override the nearest row and flag the test.</p>';
     h+='<div class="quickbox">'+
        '<div class="quickhead"><span class="eyebrow">Rapid entry</span>'+
          '<span class="nextdepth mono" id="nextDepth"></span></div>'+
@@ -1672,7 +1672,7 @@
       d.flag=this.checked; save(); renderDcpDetail(d); renderDcpList();
     });
     document.getElementById('addReading').addEventListener('click',function(){
-      d.readings.push({blows:'',soil:''}); save(); renderDcpRows(d); updateNextDepth(d);
+      d.readings.push({blows:'',soil:''}); save(); renderDcpRows(d); updateNextDepth(d, cursor);
     });
     /* ---- rapid entry ---- */
     var qin=document.getElementById('quickBlows');
@@ -1699,19 +1699,20 @@
       qin.value=''; qin.focus();
     }
     // what voice entry drives while this test is open
+    function undoReading(){
+      if(cursor<=0) return null;
+      cursor--;
+      var gone=d.readings[cursor] ? d.readings[cursor].blows : '';
+      if(d.readings[cursor]) d.readings[cursor].blows='';
+      // drop a trailing row that is now empty, but never the first one
+      while(d.readings.length>1 && String(d.readings[d.readings.length-1].blows)==='' &&
+            d.readings.length-1>cursor) d.readings.pop();
+      save(); renderDcpRows(d); renderDcpList(); updateNextDepth(d, cursor);
+      return gone===''? '(blank)' : gone;
+    }
     DCP_VOICE={
       push: pushReading,
-      undo: function(){
-        if(cursor<=0) return null;
-        cursor--;
-        var gone=d.readings[cursor] ? d.readings[cursor].blows : '';
-        if(d.readings[cursor]) d.readings[cursor].blows='';
-        // drop a trailing row that is now empty, but never the first one
-        while(d.readings.length>1 && String(d.readings[d.readings.length-1].blows)==='' &&
-              d.readings.length-1>cursor) d.readings.pop();
-        save(); renderDcpRows(d); renderDcpList(); updateNextDepth(d, cursor);
-        return gone===''? '(blank)' : gone;
-      },
+      undo: undoReading,
       jump: function(depthM){
         cursor=Math.max(0, Math.round(depthM*10));       // 100 mm per row
         while(d.readings.length<cursor) d.readings.push({blows:'',soil:''});
@@ -1721,15 +1722,14 @@
       end: function(how){
         d.refusalType=how; save(); renderDcpDetail(d); renderDcpList();
       },
-      nextDepth: function(){ return (cursor*100)+'mm'; }
+      nextDepth: function(){ return ((cursor+1)*100)+'mm'; }
     };
     document.getElementById('quickAdd').addEventListener('click',commitQuick);
     qin.addEventListener('keydown',function(e){
       if(e.key==='Enter'){ e.preventDefault(); commitQuick(); }
     });
     document.getElementById('quickUndo').addEventListener('click',function(){
-      if(d.readings.length<=1){ toast('Keep the seating "set" row'); return; }
-      d.readings.pop(); save(); renderDcpRows(d); renderDcpList(); updateNextDepth(d);
+      if(undoReading()===null) toast('Nothing left to remove');
       qin.focus();
     });
     host.querySelectorAll('[data-quick]').forEach(function(el){
@@ -1739,7 +1739,7 @@
         qin.value=''; qin.focus();
       });
     });
-    updateNextDepth(d);
+    updateNextDepth(d, cursor);
     document.getElementById('bulkAdd').addEventListener('click',function(){
       var ta=document.getElementById('bulkPaste');
       var vals=ta.value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(Boolean);
@@ -1754,12 +1754,14 @@
     var el=document.getElementById('nextDepth');
     if(!el) return;
     var n = (cursor==null) ? d.readings.length : cursor;
-    el.textContent = 'next: '+(n*100)+' mm';
+    el.textContent = 'next: '+((n+1)*100)+' mm';   // the depth that reading reaches
   }
   function renderDcpRows(d){
     var body=document.getElementById('dcpRows');
     body.innerHTML=d.readings.map(function(r,idx){
-      var label = (idx*100)+'mm';   // every row is a 100 mm increment, the first included
+      // Each row is labelled by the depth it reaches, so the first increment
+      // (0 to 100 mm) reads "100mm". No seating row sits outside the scale.
+      var label = ((idx+1)*100)+'mm';
       var soilOpts=[['','Default ('+d.soilType+')'],['SAND','SAND'],['CLAY','CLAY']];
       return '<tr><td class="dcp-depth">'+label+'</td>'+
         '<td><input class="mono" data-ri="'+idx+'" data-rf="blows" value="'+esc(r.blows)+'"></td>'+
@@ -2923,7 +2925,7 @@
     STATE.dcp.forEach(function(d){ header.push(d.id+' blows'); header.push(d.id+' soil'); });
     var rows=[header];
     for(var i=0;i<maxLen;i++){
-      var row=[(i*100)+'mm'];
+      var row=[((i+1)*100)+'mm'];
       STATE.dcp.forEach(function(d){
         var r=d.readings[i];
         row.push(r?r.blows:''); row.push(r?(r.soil||d.soilType):'');
@@ -3162,7 +3164,14 @@
 
   function startVoice(){
     var Ctor=speechCtor();
-    if(!Ctor){ toast('This browser cannot do voice entry - try Safari or Chrome'); return; }
+    if(!Ctor){
+      var standalone = (window.navigator.standalone===true) ||
+        (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      toast(standalone
+        ? 'iPhone blocks voice in home-screen apps - open the link in Safari to use it'
+        : 'This browser cannot do voice entry - try Safari or Chrome');
+      return;
+    }
     if(!navigator.onLine){ toast('Voice entry needs a connection - type the readings here'); return; }
     var rec=new Ctor();
     rec.lang='en-AU'; rec.continuous=true; rec.interimResults=false; rec.maxAlternatives=1;
@@ -3189,7 +3198,9 @@
   }
 
   function buildVoiceButton(){
-    if(!speechCtor()) return;                          // no engine, no button
+    // Always draw it. iOS does not expose speech recognition inside a
+    // home-screen web app - only in Safari itself - and hiding the button
+    // there just looks like the feature was never built. Tapping it explains.
     var chip=document.createElement('div');
     chip.id='voiceChip'; chip.hidden=true;
     chip.setAttribute('style','position:fixed;left:12px;right:70px;bottom:calc(76px + env(safe-area-inset-bottom,0px));'
