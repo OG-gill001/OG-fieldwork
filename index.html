@@ -2982,8 +2982,24 @@
     return /iP(hone|ad|od)/.test(navigator.userAgent)
       || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
   }
+  // An ordinary download. Safari has honoured the download attribute since
+  // iOS 13, so this works on the phone too - it just has to happen inside a
+  // real tap, which is what the save bar below is for.
+  function anchorSave(blob, filename){
+    try{
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');
+      a.href=url; a.download=filename; a.rel='noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ try{ URL.revokeObjectURL(url); }catch(e){} }, 20000);
+      return true;
+    }catch(e){ return false; }
+  }
+  function openBlob(blob){
+    try{ return !!window.open(URL.createObjectURL(blob),'_blank'); }catch(e){ return false; }
+  }
   // iOS will not take a programmatic download, and a share sheet needs a live
-  // tap. So park the finished PDF on a bar and let the next tap hand it over.
+  // tap. So park the finished file on a bar and let the next tap hand it over.
   function offerSaveTap(blob, filename){
     var old=document.getElementById('fwlSaveBar');
     if(old && old.parentNode) old.parentNode.removeChild(old);
@@ -3009,17 +3025,23 @@
     btn.addEventListener('click', function(){
       var file=null;
       try{ file=new File([blob], filename, {type: blob.type || 'application/octet-stream'}); }catch(e){}
+      // 1. the share sheet, but only when iOS says it will take this file type
+      //    - it refuses some, and a refused share used to leave nothing behind
       if(file && navigator.canShare && navigator.canShare({files:[file]})){
         navigator.share({files:[file], title:filename})
           .then(drop)
           .catch(function(err){
             if(err && err.name==='AbortError') return;   // they backed out, keep the bar
-            try{ window.open(URL.createObjectURL(blob),'_blank'); drop(); }catch(e){}
+            if(!anchorSave(blob, filename)) openBlob(blob);
+            drop();
           });
         return;
       }
-      try{ window.open(URL.createObjectURL(blob),'_blank'); drop(); }
-      catch(e){ toast('This browser would not open the PDF'); }
+      // 2. a plain download, which Safari does honour
+      if(anchorSave(blob, filename)){ toast('Saved '+filename); drop(); return; }
+      // 3. last resort - show it and let them share it themselves
+      if(openBlob(blob)){ drop(); return; }
+      toast('Could not hand that file over - try opening the app in Safari');
     });
     close.addEventListener('click', drop);
     bar.appendChild(label); bar.appendChild(btn); bar.appendChild(close);
@@ -3227,6 +3249,7 @@
      converted to inches, which is what PptxGenJS works in.
   ========================================================================= */
   var PT=72;
+  var PPTX_MIME='application/vnd.openxmlformats-officedocument.presentationml.presentation';
   function inch(pt){ return pt/PT; }
   var OG_GREEN='00AE00', OG_GREY='808080';
 
@@ -3397,7 +3420,12 @@
         var job=(STATE.project.jobNumber||'photos').replace(/[^\w.-]+/g,'_');
         var p = deck==='site' ? makeSitePptx(photos, images) : makeBhPptx(photos, images);
         var name = job+(deck==='site'?'_site_photos.pptx':'_borehole_photos.pptx');
-        return p.write('blob').then(function(blob){
+        return p.write('blob').then(function(raw){
+          // PptxGenJS hands back a plain application/zip blob. Named .pptx that
+          // still reaches a phone as a zip: the share sheet may refuse it and
+          // Files will not open it as a deck. Re-type it before handing over.
+          var blob=raw;
+          try{ blob=new Blob([raw], {type:PPTX_MIME}); }catch(e){}
           deliverBlob(blob, name);
           toast(missing ? ('Deck built - '+missing+' photo(s) had no image') : 'Deck built');
         });
@@ -3422,11 +3450,9 @@
       return;
     }
     if(isIOS()){ offerSaveTap(blob, filename); return; }
-    try{
-      var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      toast('Saved '+filename);
-    }catch(e){ toast('This browser blocked the download'); }
+    if(anchorSave(blob, filename)){ toast('Saved '+filename); return; }
+    if(openBlob(blob)){ toast('Opened it in a new tab - save it from there'); return; }
+    toast('This browser blocked the download');
   }
 
   function deliverPdf(doc, filename){

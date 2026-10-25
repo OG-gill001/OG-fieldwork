@@ -3,7 +3,7 @@
 // one time it runs with no connection at all: a dead spot on site, aeroplane
 // mode, a SIM with nothing left on it.
 // Bump CACHE whenever any of these files change, or phones keep the old copy.
-var CACHE = 'og-fieldwork-v7';
+var CACHE = 'og-fieldwork-v8';
 
 // The PDF engine and the logo must be precached, not left to runtime caching.
 // On the very first visit the worker is not yet controlling the page, so those
