@@ -286,6 +286,11 @@
     </div>
     <button class="btn primary block" id="addPhoto">+ Add photo</button>
     <div id="photoList"></div>
+    <div class="card" id="deckSave" style="margin-top:12px;">
+      <h2 style="margin-bottom:6px;">Save this deck</h2>
+      <p class="helptext" id="deckSaveNote">Add your photos first, then build the deck.</p>
+      <div class="btn-row" id="deckSaveRow"></div>
+    </div>
   </section>
 
   <!-- REFERENCE -->
@@ -1804,9 +1809,70 @@
   document.getElementById('addPhoto').addEventListener('click',function(){
     STATE.photos.push(blankPhoto(currentDeck)); save(); renderPhotoList();
   });
+  /* ---- Save this deck -------------------------------------------------
+     An iPhone ignores a download started by a script after the tap has gone.
+     So the deck is built first, then handed over by a real link the finger
+     lands on, which Safari does honour.
+  --------------------------------------------------------------------- */
+  var deckBlobUrl=null;
+  function renderDeckSave(){
+    var row=document.getElementById('deckSaveRow');
+    var note=document.getElementById('deckSaveNote');
+    if(!row || !note) return;
+    if(deckBlobUrl){ try{ URL.revokeObjectURL(deckBlobUrl); }catch(e){} deckBlobUrl=null; }
+    row.innerHTML='';
+    var label=(currentDeck==='site'?'site':'borehole');
+    var photos=deckPhotos(currentDeck);
+    if(!photos.length){ note.textContent='Add your '+label+' photos first, then build the deck.'; return; }
+    var withImg=photos.filter(function(p){ return p.hasImage || photoThumbs[p.id]; }).length;
+    note.textContent=photos.length+' photo'+(photos.length===1?'':'s')+', '+withImg+
+      ' with an image attached. Build the deck, then tap Save.';
+    var b=document.createElement('button');
+    b.className='btn primary'; b.type='button';
+    b.textContent='Build '+label+' photos deck';
+    b.addEventListener('click', function(){
+      b.disabled=true; b.textContent='Building…';
+      buildDeckBlob(currentDeck).then(showDeckReady).catch(function(err){
+        toast(err && err.message ? err.message : 'Could not build the deck');
+        b.disabled=false; b.textContent='Build '+label+' photos deck';
+      });
+    });
+    row.appendChild(b);
+  }
+  function showDeckReady(r){
+    var row=document.getElementById('deckSaveRow');
+    var note=document.getElementById('deckSaveNote');
+    if(!row || !note) return;
+    row.innerHTML='';
+    deckBlobUrl=URL.createObjectURL(r.blob);
+    var a=document.createElement('a');
+    a.className='btn primary'; a.href=deckBlobUrl; a.download=r.name;
+    a.target='_blank'; a.rel='noopener';
+    a.textContent='⤓ Save '+r.name;
+    row.appendChild(a);
+    var file=null, canShareIt=false;
+    try{ file=new File([r.blob], r.name, {type:PPTX_MIME}); }catch(e){}
+    if(file && navigator.canShare && navigator.canShare({files:[file]})){
+      canShareIt=true;
+      var sh=document.createElement('button');
+      sh.className='btn'; sh.type='button'; sh.textContent='Share / Save to Files';
+      sh.addEventListener('click', function(){ navigator.share({files:[file], title:r.name}).catch(function(){}); });
+      row.appendChild(sh);
+    }
+    var again=document.createElement('button');
+    again.className='btn ghost'; again.type='button'; again.textContent='Rebuild';
+    again.addEventListener('click', renderDeckSave);
+    row.appendChild(again);
+    note.textContent = (r.missing
+      ? ('Ready — '+r.missing+' photo(s) had no image and print as blank boxes. ')
+      : 'Ready. ')
+      + (canShareIt ? 'Tap Save, or Share to put it straight into Files.' : 'Tap Save.');
+  }
+
   function renderPhotoList(){
     var host=document.getElementById('photoList');
     var items=STATE.photos.filter(function(p){ return p.deck===currentDeck; });
+    renderDeckSave();
     if(!items.length){
       host.innerHTML='<div class="empty-note">No '+(currentDeck==='site'?'site':'borehole')+' photos logged yet.</div>'; return;
     }
@@ -2935,7 +3001,7 @@
     doSave(projSlug()+'_dcp.csv', rows.map(function(r){ return r.map(csvCell).join(','); }).join('\n'));
   });
   document.getElementById('expSitePptx').addEventListener('click',function(){ exportDeck('site'); });
-  document.getElementById('expBhPptx').addEventListener('click',function(){ exportDeck('bh'); });
+  document.getElementById('expBhPptx').addEventListener('click',function(){ exportDeck('borehole'); });
   document.getElementById('expPhotos').addEventListener('click',function(){
     var rows=[['Deck','Filename','Caption','Direction_or_Subject','BoreholeID','DepthFrom','DepthTo','Tray','Flagged','FlagNote']];
     STATE.photos.forEach(function(p){
@@ -3409,29 +3475,47 @@
     });
   }
 
-  function exportDeck(deck){
-    var photos=STATE.photos.filter(function(p){ return p.deck===deck; });
-    if(!photos.length){ toast('No '+(deck==='site'?'site':'borehole')+' photos logged yet'); return; }
-    var missing=photos.filter(function(p){ return !p.hasImage && !photoThumbs[p.id]; }).length;
-    toast('Building the deck...');
-    ensurePptx().then(function(ok){
-      if(!ok){ toast('PowerPoint builder could not load - check your connection'); return; }
-      return loadDeckImages(photos).then(function(images){
-        var job=(STATE.project.jobNumber||'photos').replace(/[^\w.-]+/g,'_');
-        var p = deck==='site' ? makeSitePptx(photos, images) : makeBhPptx(photos, images);
-        var name = job+(deck==='site'?'_site_photos.pptx':'_borehole_photos.pptx');
-        return p.write('blob').then(function(raw){
-          // PptxGenJS hands back a plain application/zip blob. Named .pptx that
-          // still reaches a phone as a zip: the share sheet may refuse it and
-          // Files will not open it as a deck. Re-type it before handing over.
-          var blob=raw;
-          try{ blob=new Blob([raw], {type:PPTX_MIME}); }catch(e){}
-          deliverBlob(blob, name);
-          toast(missing ? ('Deck built - '+missing+' photo(s) had no image') : 'Deck built');
-        });
+  // The deck tabs store 'site' and 'borehole'; some older rows say 'bh'.
+  // Match both, or a borehole deck finds nothing and looks broken.
+  function deckPhotos(deck){
+    var want = (deck==='site') ? ['site'] : ['borehole','bh'];
+    return STATE.photos.filter(function(p){
+      if(want.indexOf(p.deck)<0) return false;
+      // a row added by a stray tap and never filled in would otherwise print
+      // as an empty "Photograph 3:" against a blank box
+      return !!(p.hasImage || photoThumbs[p.id] || String(p.caption||'').trim() ||
+                String(p.filename||'').trim());
+    });
+  }
+  function buildDeckBlob(deck){
+    var photos=deckPhotos(deck);
+    if(!photos.length)
+      return Promise.reject(new Error('No '+(deck==='site'?'site':'borehole')+' photos logged yet'));
+    return ensurePptx().then(function(ok){
+      if(!ok) throw new Error('PowerPoint builder could not load - check your connection');
+      return loadDeckImages(photos);
+    }).then(function(images){
+      var job=(STATE.project.jobNumber||'photos').replace(/[^\w.-]+/g,'_');
+      var p = deck==='site' ? makeSitePptx(photos, images) : makeBhPptx(photos, images);
+      var name = job+(deck==='site'?'_site_photos.pptx':'_borehole_photos.pptx');
+      return p.write('blob').then(function(raw){
+        // PptxGenJS hands back a plain application/zip blob. Named .pptx that
+        // still reaches a phone as a zip: the share sheet refuses it and Files
+        // will not open it as a deck. Re-type it before handing over.
+        var blob=raw;
+        try{ blob=new Blob([raw], {type:PPTX_MIME}); }catch(e){}
+        return { blob:blob, name:name,
+                 missing: photos.filter(function(x){ return !x.hasImage && !photoThumbs[x.id]; }).length };
       });
+    });
+  }
+  function exportDeck(deck){
+    toast('Building the deck...');
+    buildDeckBlob(deck).then(function(r){
+      deliverBlob(r.blob, r.name);
+      toast(r.missing ? ('Deck built - '+r.missing+' photo(s) had no image') : 'Deck built');
     }).catch(function(err){
-      toast('Could not build the deck: '+(err && err.message ? err.message : 'unknown error'));
+      toast(err && err.message ? err.message : 'Could not build the deck');
     }).then(function(){ recoverUI(); });
   }
 
