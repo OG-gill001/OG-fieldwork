@@ -76,7 +76,8 @@
   }
   .topbar-inner{display:flex; align-items:center; gap:10px;}
   .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);
-    display:flex;align-items:center;justify-content:center;font-size:1rem;flex:none;}
+    display:flex;align-items:center;justify-content:center;flex:none;
+    font-size:.74rem;font-weight:800;letter-spacing:.04em;}
   button.topbar-meta{min-width:0; background:none; border:none; color:inherit;
     text-align:left; padding:0; cursor:pointer; font-family:inherit; flex:1;}
   .topbar-meta .caret{color:var(--ink-dim); font-size:.7rem; margin-left:4px;}
@@ -102,7 +103,6 @@
     display:flex; flex-direction:column; align-items:center; gap:2px;
     font-size:.58rem; font-weight:600; padding:4px 2px; border-radius:8px; flex:1;
   }
-  nav.tabbar button .ic{font-size:1rem;}
   nav.tabbar button[aria-current="true"]{color:var(--accent);}
   .badge{background:var(--flag); color:#fff; border-radius:99px; font-size:.58rem; padding:1px 5px; margin-left:3px; font-weight:700;}
 
@@ -135,10 +135,25 @@
   .overlay-head{display:flex; align-items:center; gap:10px; margin-bottom:14px;
     position:sticky; top:0; background:var(--bg); padding-block:4px 8px; z-index:2;}
   .overlay-head .btn{flex:none;}
-  .overlay-head h2{flex:1; font-family:var(--font-mono);}
+  .overlay-head h2{flex:1; font-family:var(--font-mono); min-width:0;}
+  /* Four controls do not fit across a 375 px phone, and the row does not
+     scroll - Delete simply went off the edge. Let it wrap, and keep the
+     Back button and the hole ID together on the first line. */
+  .overlay-head{flex-wrap:wrap; row-gap:6px;}
+  .overlay-head h2{flex:1 1 auto;}
+  @media (max-width:560px){
+    .overlay-head h2{flex:1 1 100%; order:-1; margin:0;}
+    .overlay-head .btn{flex:1 1 auto;}
+  }
 
   .interval{border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:var(--surface-2);}
-  .interval-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .interval-top{display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:8px; flex-wrap:wrap; gap:6px;}
+  /* "Interval 1 · 0.00-1.20 m" was being squeezed into three lines once a
+     second button joined the row. Let the label take the whole width on a
+     phone and the two buttons share the line under it. */
+  .interval-top .tag{flex:1 1 100%; white-space:nowrap;}
+  .interval-top .btn{flex:1 1 0;}
   .interval-top .tag{font-family:var(--font-mono); font-size:.78rem; color:var(--ink-dim);}
 
   .preview{
@@ -220,17 +235,45 @@
   details.ref{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px;}
   details.ref summary{font-weight:600; font-size:.86rem; cursor:pointer;}
   details.ref[open] summary{margin-bottom:8px;}
+
+  /* ---- line icons in the tab bar --------------------------------------
+     Emoji render differently on every phone - and some render as a box -
+     so the tabs carry real SVG that inherits the current colour, which is
+     what turns the selected tab accent green with no extra rule.         */
+  nav.tabbar button .ic{display:flex; align-items:center; justify-content:center; height:22px;}
+  nav.tabbar button .ic svg{width:22px; height:22px; display:block;}
+
+  /* ---- "Saved 14:32" beside the status dot ----------------------------
+     The app saves constantly but never said so, which is the difference
+     between trusting it and re-checking. Red when nothing is saving.     */
+  .savewrap{margin-left:auto; display:flex; align-items:center; gap:6px; flex:none;}
+  .savewrap .sync-dot{margin-left:0;}
+  .saved-at{font-size:.62rem; color:var(--ink-dim); white-space:nowrap;
+    font-variant-numeric:tabular-nums; letter-spacing:.01em;}
+  .saved-at.bad{color:#d23b2e; font-weight:800;}
+
+  /* ---- photo capture buttons ------------------------------------------
+     A bare file input makes you tap Photo Library then Take Photo every
+     time. The camera one carries capture="environment" so it opens on the
+     back camera; the input sits invisible across its own label.          */
+  .pickrow{display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap;}
+  .pickbtn{position:relative; overflow:hidden; cursor:pointer;}
+  .pickbtn input[type=file]{position:absolute; inset:0; opacity:0;
+    width:100%; height:100%; cursor:pointer;}
 </style>
 
 
 <header class="topbar">
   <div class="topbar-inner">
-    <div class="mark">🪨</div>
+    <div class="mark">OG</div>
     <button class="topbar-meta" id="projectSwitchBtn" title="Switch project">
       <div class="proj"><span id="hdrProject">New project</span><span class="caret">▾</span></div>
       <div class="job" id="hdrJob">Set up a job to begin</div>
     </button>
-    <div class="sync-dot" id="syncDot" data-state="local" title="Storage status"></div>
+    <div class="savewrap">
+      <div class="sync-dot" id="syncDot" data-state="local" title="Storage status"></div>
+      <span class="saved-at" id="savedAt"></span>
+    </div>
   </div>
 </header>
 
@@ -397,6 +440,7 @@
     <button class="btn small" data-close-overlay>← Back</button>
     <h2 id="bhOverlayTitle">BH01</h2>
     <button class="btn small" id="bhPdf">⤓ PDF</button>
+    <button class="btn small" id="bhDup" title="Copy this hole to the next ID">Duplicate</button>
     <button class="btn small danger" id="bhDelete">Delete</button>
   </div>
   <div id="bhOverlayBody"></div>
@@ -428,12 +472,12 @@
 <script src="pptxgen.bundle.js"></script>
 
 <nav class="tabbar">
-  <button data-tab="setup" aria-current="true"><span class="ic">📋</span>Setup</button>
-  <button data-tab="boreholes"><span class="ic">🕳️</span>Boreholes</button>
-  <button data-tab="dcp"><span class="ic">📈</span>DCP</button>
-  <button data-tab="photos"><span class="ic">📷</span>Photos</button>
-  <button data-tab="ref"><span class="ic">📖</span>Ref</button>
-  <button data-tab="export"><span class="ic">⤓</span>Export<span class="badge" id="flagBadge" hidden>0</span></button>
+  <button data-tab="setup" aria-current="true"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2.2"/><path d="M9.2 3.2h5.6v3.2H9.2z"/><path d="M8.8 11.5h6.4M8.8 15.3h4.2"/></svg></span>Setup</button>
+  <button data-tab="boreholes"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5h17M3.5 12h17M3.5 16.5h17"/><rect x="9.8" y="3" width="4.4" height="18" rx="1.6"/></svg></span>Boreholes</button>
+  <button data-tab="dcp"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 3.5v17h16"/><path d="M8.4 17V11.4M12.4 17V6.6M16.4 17v-3.4"/></svg></span>DCP</button>
+  <button data-tab="photos"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 9a2 2 0 0 1 2-2h1.9l1.2-2.2h7.4L16.9 7h1.9a2 2 0 0 1 2 2v8.2a2 2 0 0 1-2 2H5.2a2 2 0 0 1-2-2z"/><circle cx="12" cy="13.1" r="3.3"/></svg></span>Photos</button>
+  <button data-tab="ref"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.6C10.4 5 8.4 4.5 4.6 4.5v13c3.8 0 5.8.5 7.4 2 1.6-1.5 3.6-2 7.4-2v-13c-3.8 0-5.8.5-7.4 2z"/><path d="M12 6.6v12.9"/></svg></span>Ref</button>
+  <button data-tab="export"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4v10.8"/><path d="M8 10.4l4 4 4-4"/><path d="M4.2 16.6v2.4a1.6 1.6 0 0 0 1.6 1.6h12.4a1.6 1.6 0 0 0 1.6-1.6v-2.4"/></svg></span>Export<span class="badge" id="flagBadge" hidden>0</span></button>
 </nav>
 
 <script>
@@ -797,6 +841,10 @@
     }
     if(!ACTIVE){ ACTIVE=uid('p'); PROJECTS[ACTIVE]=blankProjectRecord(''); }
     STATE = PROJECTS[ACTIVE];
+    // the clock belongs to the project on screen, so switching jobs shows
+    // when THAT job was last written, not the one just left
+    lastSavedAt = STATE.updatedAt || 0;
+    renderSaved();
     try{ localStorage.setItem('fieldwork_logger_active', ACTIVE); }catch(e){}
   }
   function projectLabel(p){
@@ -920,7 +968,21 @@
         localFull=false; setSyncState(db?'synced':'local');
         toast('Storage freed up - saving again');
       }
+      lastSavedAt=Date.now(); renderSaved();
     }catch(e){ storageFull(e); }
+  }
+  /* The write happens on a timer and is invisible, so say when it last
+     landed. Absolute time, because on site what you want to know is
+     whether it was before or after the last hole - not "2 minutes ago". */
+  var lastSavedAt=0;
+  function renderSaved(){
+    var el=document.getElementById('savedAt'); if(!el) return;
+    if(localFull){ el.textContent='NOT SAVED'; el.className='saved-at bad'; return; }
+    el.className='saved-at';
+    if(!lastSavedAt){ el.textContent=''; return; }
+    if(Date.now()-lastSavedAt < 45000){ el.textContent='Saved just now'; return; }
+    var d=new Date(lastSavedAt);
+    el.textContent='Saved '+pad2(d.getHours())+':'+pad2(d.getMinutes());
   }
   function localSave(){
     if(localSaveTimer) return;
@@ -932,7 +994,7 @@
   function storageFull(err){
     if(localFull) return;
     localFull=true;
-    setSyncState('full');
+    setSyncState('full'); renderSaved();
     var quota = err && (err.name==='QuotaExceededError' ||
                         err.name==='NS_ERROR_DOM_QUOTA_REACHED' ||
                         err.code===22 || err.code===1014);
@@ -1332,10 +1394,70 @@
       el.addEventListener('click',function(){ openBorehole(el.dataset.openBh); });
     });
   }
+  /* ---- next ID, and what carries over ---------------------------------
+     Reading the number off the LAST hole rather than off the count keeps
+     the run going after a hole has been deleted or renamed, and the digit
+     width is preserved so BH09 is followed by BH10. A non-numeric ID just
+     gets -02 appended rather than being guessed at.                      */
+  function nextBoreholeId(){
+    var list=STATE.boreholes;
+    if(!list.length) return 'BH01';
+    var prev=String(list[list.length-1].id||'').trim();
+    var m=prev.match(/^(.*?)(\d+)$/);
+    var prefix = m ? m[1] : (prev ? prev+'-' : 'BH');
+    var width  = m ? m[2].length : 2;
+    var n      = m ? parseInt(m[2],10) : 1;
+    var id, guard=0;
+    do{
+      n++; guard++;
+      var s=String(n); while(s.length<width) s='0'+s;
+      id=prefix+s;
+    } while(guard<9999 && STATE.boreholes.some(function(b){ return b.id===id; }));
+    return id;
+  }
+  // The rig and the crew belong to the day, not to the hole, so a new hole
+  // starts with the last one's. Nothing measured is carried.
+  var CARRY_FIELDS=['drillingMethod','drillDiameter','flushingFluid','inclination','operator','loggedBy'];
+  function carryRig(nb){
+    var prev = STATE.boreholes.length ? STATE.boreholes[STATE.boreholes.length-1] : null;
+    if(prev) CARRY_FIELDS.forEach(function(k){ if(prev[k]) nb[k]=prev[k]; });
+    return nb;
+  }
+  /* A duplicate copies the ground model - the strata, the rig, the crew.
+     Everything MEASURED in the old hole is dropped: coordinates, RL, GPS,
+     water level, samples, SPT, pocket penetrometer, the field notes and the
+     sign-off. Carrying those over would put real-looking numbers on a hole
+     they were never read from.                                           */
+  function cloneBorehole(src, newId){
+    var b=JSON.parse(JSON.stringify(src));
+    b.id=newId;
+    b.coordE=''; b.coordN=''; b.rl=''; b.gps=null;
+    b.gwEncountered=false; b.gwDepth='';
+    b.observations=[]; b.remarks=[];
+    b.checkedBy=''; b.checkDate='';
+    b.flag=false; b.flagNote='';
+    b.intervals=(b.intervals||[]).map(stripMeasured);
+    if(!b.intervals.length) b.intervals=[blankInterval()];
+    return b;
+  }
+  function stripMeasured(iv){
+    iv.id=uid('iv');
+    iv.samples=[]; iv.spt=null; iv.pp=''; iv.dcpInline='';
+    iv.comments=''; iv.flag=false; iv.flagNote='';
+    return iv;
+  }
+  // Same material, next layer down: the copy picks up where the original
+  // finished and its own "to" is left blank to be read off the hole.
+  function cloneInterval(src){
+    var iv=stripMeasured(JSON.parse(JSON.stringify(src)));
+    iv.from = src.to || ''; iv.to='';
+    return iv;
+  }
+
   document.getElementById('addBorehole').addEventListener('click',function(){
-    var n=STATE.boreholes.length+1, id='BH'+pad2(n);
-    while(STATE.boreholes.some(function(b){return b.id===id;})){ n++; id='BH'+pad2(n); }
-    STATE.boreholes.push(blankBorehole(id)); save(); renderBoreholeList(); openBorehole(id);
+    var id=nextBoreholeId();
+    STATE.boreholes.push(carryRig(blankBorehole(id)));
+    save(); renderBoreholeList(); openBorehole(id);
   });
 
   /* ============================================================ borehole detail */
@@ -1350,6 +1472,14 @@
     document.getElementById('bhOverlay').hidden=false;
     document.getElementById('bhPdf').onclick=function(){
       exportLogPdf([b], (b.id||'borehole')+'_log.pdf');
+    };
+    document.getElementById('bhDup').onclick=function(){
+      // The copy goes on the end and takes the next ID in the run, so the
+      // list order and the numbering never disagree with each other.
+      var newId=nextBoreholeId();
+      STATE.boreholes.push(cloneBorehole(b, newId));
+      save(); renderBoreholeList(); openBorehole(newId);
+      toast(newId+' copied from '+b.id+' - coordinates, water level, samples and notes left blank');
     };
     document.getElementById('bhDelete').onclick=function(){
       if(confirm('Delete '+b.id+'? This removes all its intervals.')){
@@ -1505,6 +1635,7 @@
     var h='<div class="interval'+(iv.flag?' flagged':'')+'" data-iv="'+iv.id+'">';
     h+='<div class="interval-top"><span class="tag">Interval '+(idx+1)+
        (iv.from!==''||iv.to!==''?' · '+esc(iv.from||'?')+'–'+esc(iv.to||'?')+' m':'')+'</span>'+
+       '<button class="btn small ghost" data-dup-iv="'+iv.id+'" title="Same material, next layer down">Duplicate</button>'+
        '<button class="btn small ghost" data-remove-iv="'+iv.id+'">Remove</button></div>';
 
     h+='<div class="row">'+
@@ -1767,6 +1898,16 @@
     });
     host.querySelectorAll('[data-iv-flag]').forEach(function(el){
       el.addEventListener('change',function(){ var iv=ivOf(el); iv.flag=el.checked; commit(iv,true); });
+    });
+    host.querySelectorAll('[data-dup-iv]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var i=-1;
+        b.intervals.forEach(function(x,k){ if(x.id===el.dataset.dupIv) i=k; });
+        if(i<0) return;
+        b.intervals.splice(i+1, 0, cloneInterval(b.intervals[i]));
+        save(); renderIntervals(b); renderBoreholeList();
+        toast('Interval copied - set its "To" depth');
+      });
     });
     host.querySelectorAll('[data-remove-iv]').forEach(function(el){
       el.addEventListener('click',function(){
@@ -2114,7 +2255,12 @@
             ? '<img class="photo-thumb" data-thumb="'+p.id+'" src="'+photoThumbs[p.id]+'" alt="">'
             : '<div class="photo-thumb" data-thumb="'+p.id+'"></div>')+
           '<div class="photo-fields">'+
-            '<input type="file" accept="image/*" data-pick="'+p.id+'" style="margin-bottom:6px;">'+
+            '<div class="pickrow">'+
+              '<label class="btn small pickbtn">Take photo'+
+                '<input type="file" accept="image/*" capture="environment" data-pick="'+p.id+'"></label>'+
+              '<label class="btn small ghost pickbtn">Choose file'+
+                '<input type="file" accept="image/*" data-pick="'+p.id+'"></label>'+
+            '</div>'+
             '<input class="mono" data-p="filename" data-pid="'+p.id+'" value="'+esc(p.filename)+'" placeholder="filename.jpg">'+
           '</div></div>'+
         '<label class="field" style="margin-top:8px;"><span>Caption</span>'+
@@ -3661,6 +3807,9 @@
   }
   bindActive();
   renderAll();
+  // bindActive has already set the clock from this project's updatedAt;
+  // this only keeps "Saved just now" from going stale on a quiet screen.
+  setInterval(renderSaved, 20000);
   var savedTab='setup';
   try{ savedTab=localStorage.getItem('fieldwork_logger_tab')||'setup'; }catch(e){}
   showTab(savedTab);
