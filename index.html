@@ -25,15 +25,20 @@
     --font-ui:Arial,Helvetica,sans-serif;
     --font-mono:Arial,Helvetica,sans-serif;
   }
+  /* color-scheme travels with the palette, or the phone draws its own select
+     and date pickers light against a dark page. */
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
+      color-scheme:dark;
       --bg:#12160f; --surface:#1b2117; --surface-2:#242b1f;
       --ink:#e9ede3; --ink-dim:#a3ad98; --line:#333d2b;
       --accent:#74bb92; --accent-ink:#0e1a13; --accent-soft:#1f3527;
       --flag:#e2916a; --flag-soft:#3a2620;
     }
   }
+  :root[data-theme="light"]{ color-scheme:light; }
   :root[data-theme="dark"]{
+    color-scheme:dark;
     --bg:#12160f; --surface:#1b2117; --surface-2:#242b1f;
     --ink:#e9ede3; --ink-dim:#a3ad98; --line:#333d2b;
     --accent:#74bb92; --accent-ink:#0e1a13; --accent-soft:#1f3527;
@@ -80,6 +85,8 @@
   .sync-dot{margin-left:auto; width:9px; height:9px; border-radius:50%; background:var(--ink-dim); flex:none;}
   .sync-dot[data-state="synced"]{background:var(--accent);}
   .sync-dot[data-state="local"]{background:var(--flag);}
+  /* nothing is being saved at all - has to be unmistakable at arm's length */
+  .sync-dot[data-state="full"]{background:#d23b2e; box-shadow:0 0 0 3px rgba(210,59,46,.22);}
 
   .view{display:flex; flex-direction:column; gap:14px;}
   .view[hidden]{display:none;}
@@ -192,6 +199,22 @@
   .toast.show{opacity:1;}
   @media (prefers-reduced-motion: reduce){ .toast{transition:none;} }
 
+  /* completeness check: one tappable row per thing left out */
+  .issue{display:block; width:100%; text-align:left; background:var(--surface);
+    border:1px solid var(--line); border-radius:9px; padding:9px 11px;
+    margin-bottom:6px; color:var(--ink); font-family:inherit; cursor:pointer;}
+  .issue .where{font-family:var(--font-mono); font-weight:700; font-size:.7rem;
+    color:var(--ink-dim); display:block; text-transform:uppercase; letter-spacing:.04em;}
+  .issue .what{font-size:.83rem; font-weight:600; display:block; margin-top:1px;}
+  .issue .effect{font-size:.73rem; color:var(--ink-dim); display:block; margin-top:3px;}
+  .issue.must{border-left:3px solid var(--flag);}
+  .issue.soft{border-left:3px solid var(--line);}
+  .issue-head{font-size:.72rem; font-weight:700; text-transform:uppercase;
+    letter-spacing:.06em; margin:10px 0 6px;}
+  .issue-head.must{color:var(--flag);}
+  .allclear{border:1px solid var(--accent); background:var(--accent-soft); color:var(--accent);
+    border-radius:10px; padding:14px; text-align:center; font-weight:600; font-size:.86rem;}
+
   hr.sep{border:none; border-top:1px solid var(--line); margin:4px 0;}
   .helptext{font-size:.75rem; color:var(--ink-dim);}
   details.ref{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:10px 12px;}
@@ -254,6 +277,17 @@
       <p class="helptext" style="margin-top:8px;">Usually one DCP adjacent each borehole.</p>
     </div>
     <div class="card">
+      <h2 style="margin-bottom:10px;">Screen</h2>
+      <label class="field" style="margin-bottom:0;"><span>Theme</span>
+        <select id="setTheme">
+          <option value="auto">Follow the phone</option>
+          <option value="light">Light - bright sun</option>
+          <option value="dark">Dark - night / early start</option>
+        </select></label>
+      <p class="helptext" style="margin-top:8px;">Kept on this device, not in the job - which phone is out in the sun has nothing to do with which job is open.</p>
+    </div>
+
+    <div class="card">
       <h2 style="margin-bottom:6px;">About this build</h2>
       <p class="helptext">Descriptive terms follow <strong>AS 1726:2017</strong> (see the Ref tab). Captures borehole logs, DCP/PSP blow counts and photo captions. Infiltration tests aren't in this build yet.</p>
     </div>
@@ -304,8 +338,15 @@
   <section class="view" id="view-export" hidden>
     <div><div class="eyebrow">Wrap up</div><h1>Export &amp; review</h1></div>
     <div class="stat-grid" id="statGrid"></div>
+    <div class="card" style="border-color:var(--accent);">
+      <h2 style="margin-bottom:6px;">Before you leave site</h2>
+      <p class="helptext" style="margin-bottom:4px;">What has been left out, and what each omission will do to the printed sheet. Tap one to go straight to it. This checks what the app&rsquo;s own output needs &mdash; it is not a second opinion on the engineering.</p>
+      <div id="checkBody"></div>
+    </div>
+
     <div class="card">
       <h2 style="margin-bottom:8px;">Needs review</h2>
+      <p class="helptext" style="margin-bottom:8px;">What you flagged on purpose, as you logged it.</p>
       <div id="flaggedList" class="helptext">Nothing flagged yet.</div>
     </div>
     <div class="card">
@@ -337,6 +378,13 @@
         <button class="btn" id="expPhotos">⤓ Photos (.csv)</button>
       </div>
     </div>
+    <div class="card">
+      <h2 style="margin-bottom:6px;">Import a project</h2>
+      <p class="helptext" style="margin-bottom:10px;">Takes a <span class="mono">_fieldwork.json</span> written by Export above &mdash; to move a job onto another phone, take over someone else&rsquo;s holes, or put a job back after a wipe. A job already on this phone asks before anything is replaced.</p>
+      <input type="file" accept=".json,application/json" id="impJson">
+      <p class="helptext" style="margin-top:8px;">The photographs themselves are not in the file &mdash; they stay on the phone that took them. Imported photo rows keep their captions, boreholes and depths, and print as blank boxes in the deck unless those images are already on this device.</p>
+    </div>
+
     <div class="card">
       <h2 style="margin-bottom:6px;">Storage</h2>
       <p class="helptext" id="storageNote">Checking…</p>
@@ -370,7 +418,7 @@
     <h2 style="font-family:inherit;">Projects</h2>
     <button class="btn small primary" id="newProjectBtn">+ New</button>
   </div>
-  <p class="helptext" style="margin-bottom:12px;">Each job keeps its own boreholes, DCP tests and photos. Switching here doesn't touch the others.</p>
+  <p class="helptext" style="margin-bottom:12px;">Each job keeps its own boreholes, DCP tests and photos. Switching here doesn't touch the others. To bring a job in from another phone, use Import on the Export tab.</p>
   <div id="projectSheetBody"></div>
 </div>
 
@@ -591,8 +639,14 @@
      never guessed — the field is left for the logger to set. */
   function suggestClassification(d){
     if(!d || !d.name) return '';
-    var n=d.name.toUpperCase(), sec=(d.secondary||'').toUpperCase(),
-        p=(d.plasticity||'').toUpperCase();
+    var n=d.name.toUpperCase(), sec=(d.secondary||'').toUpperCase();
+    /* Plasticity is held in two different places: a primary CLAY or SILT puts
+       it in plasPrimaryFrom, while d.plasticity belongs to a Clayey/Silty
+       SECONDARY fraction. Reading only the latter meant a plain "CLAY, low
+       plasticity" was never offered its CL. Take whichever one the chosen
+       soil actually fills in. */
+    var p=(isFineName(n) ? (d.plasPrimaryFrom || d.plasPrimaryTo || '')
+                         : (d.plasticity || '')).toUpperCase();
     if(n==='PEAT') return 'Pt';
     if(n==='SAND'){ if(sec==='CLAYEY') return 'SC'; if(sec==='SILTY') return 'SM'; return ''; }
     if(n==='GRAVEL'){ if(sec==='CLAYEY') return 'GC'; if(sec==='SILTY') return 'GM'; return ''; }
@@ -610,8 +664,8 @@
   function weatheringPhrase(a,b){
     var wa=weatheringWord(a), wb=weatheringWord(b);
     if(!wa || !wb || wa===wb) return wa||wb||'';
-    if(/ Weathered$$/.test(wa) && / Weathered$$/.test(wb))
-      return wa.replace(/ Weathered$$/,'')+' to '+wb;
+    if(/ Weathered$/.test(wa) && / Weathered$/.test(wb))
+      return wa.replace(/ Weathered$/,'')+' to '+wb;
     return wa+' to '+wb;
   }
   function strengthPhrase(a,b){
@@ -771,7 +825,7 @@
   }
   function blankBorehole(id){
     return {id:id, drillingMethod:'', drillDiameter:'', flushingFluid:'None', inclination:'Vertical',
-      coordE:'', coordN:'', rl:'', operator:'', loggedBy:'', comments:'',
+      coordE:'', coordN:'', rl:'', gps:null, operator:'', loggedBy:'', comments:'',
       terminationDepth:'', terminationReason:'', terminationOther:'', sheetDepth:'', checkedBy:'', checkDate:'',
       gwEncountered:false, gwDepth:'',
       intervals:[blankInterval()], observations:[], remarks:[], flag:false, flagNote:''};
@@ -816,11 +870,28 @@
     base.spt = iv.spt || null;
     return base;
   }
+  // A photo row arriving from a file or an older save may be missing keys the
+  // list and the decks index by - above all its id, which everything else
+  // hangs off. Fill the shape out rather than trusting the row.
+  function normalizePhoto(p){
+    var base=blankPhoto((p && p.deck) || 'site');
+    if(p && typeof p==='object'){
+      Object.keys(base).forEach(function(k){ if(p[k]!=null) base[k]=p[k]; });
+      if(p.id) base.id=p.id;
+      base.hasImage=!!p.hasImage;
+      base.flag=!!p.flag;
+    }
+    return base;
+  }
   function normalizeBorehole(b){
     b.intervals = (b.intervals||[]).map(normalizeInterval);
     if(!b.intervals.length) b.intervals = [blankInterval()];
     b.observations = b.observations||[];
     b.remarks = b.remarks||[];
+    // the raw fix is kept beside the grid values, so the projection can
+    // always be redone properly in the GIS from the lat/lon it came from
+    if(b.gps==null || typeof b.gps!=='object' ||
+       typeof b.gps.lat!=='number' || typeof b.gps.lon!=='number') b.gps=null;
     return b;
   }
   function mergeState(remote){
@@ -828,18 +899,46 @@
       project: Object.assign({client:'',projectName:'',jobNumber:'',location:'',fieldEngineer:'',date:''}, remote.project||{}),
       boreholes: (remote.boreholes||[]).map(normalizeBorehole),
       dcp: (remote.dcp||[]).map(normalizeDcp),
-      photos: remote.photos||[],
+      photos: (remote.photos||[]).map(normalizePhoto),
       settings: Object.assign({pdfScale:1, autoDensity:true}, remote.settings||{}),
       updatedAt: remote.updatedAt||0
     };
   }
 
   /* ============================================================ persistence */
-  function localSave(){
+  /* Writing the projects out means serialising every one of them, and save()
+     runs on every keystroke - so the local write is coalesced. Nothing rides
+     on the timer for long: leaving a form, backgrounding the phone and
+     closing an overlay all call flushSave, which writes immediately. */
+  var localSaveTimer=null, localFull=false;
+  function localSaveNow(){
+    clearTimeout(localSaveTimer); localSaveTimer=null;
     try{
       localStorage.setItem('fieldwork_logger_projects', JSON.stringify(PROJECTS));
       localStorage.setItem('fieldwork_logger_active', ACTIVE||'');
-    }catch(e){}
+      if(localFull){
+        localFull=false; setSyncState(db?'synced':'local');
+        toast('Storage freed up - saving again');
+      }
+    }catch(e){ storageFull(e); }
+  }
+  function localSave(){
+    if(localSaveTimer) return;
+    localSaveTimer=setTimeout(localSaveNow, 400);
+  }
+  // Once the quota is gone every later write fails too. Swallowing that left
+  // the dot reading "saved on this device" while a day's logging went nowhere,
+  // so it is said out loud and the dot goes red until a write succeeds.
+  function storageFull(err){
+    if(localFull) return;
+    localFull=true;
+    setSyncState('full');
+    var quota = err && (err.name==='QuotaExceededError' ||
+                        err.name==='NS_ERROR_DOM_QUOTA_REACHED' ||
+                        err.code===22 || err.code===1014);
+    toast(quota
+      ? 'This device is out of storage - EXPORT NOW, nothing is being saved'
+      : 'Could not save to this device - export your data now');
   }
   function localLoad(){
     var out=null;
@@ -858,8 +957,12 @@
   }
   function setSyncState(s){
     var dot=document.getElementById('syncDot'); if(!dot) return;
+    // "nothing is saving" outranks any sync status until a write succeeds
+    if(localFull && s!=='full') s='full';
     dot.dataset.state=s;
-    dot.title = s==='synced' ? 'Synced to shared record' : 'Saved on this device only';
+    dot.title = s==='full'   ? 'This device is out of storage - export now'
+              : s==='synced' ? 'Synced to shared record'
+              : 'Saved on this device only';
   }
   var pendingSave=false, warnedSync=false;
   function overlayOpen(){
@@ -893,7 +996,8 @@
   // Write straight away rather than waiting out the debounce - a phone can be
   // backgrounded or locked mid-edit and the pending write would never fire.
   function flushSave(){
-    if(!db || !ACTIVE || !PROJECTS[ACTIVE]) { localSave(); return; }
+    localSaveNow();                       // the coalesced write cannot wait here
+    if(!db || !ACTIVE || !PROJECTS[ACTIVE]) return;
     clearTimeout(dbSaveTimer);
     var id=ACTIVE;
     db.collection('projects').doc(id).set(PROJECTS[id])
@@ -1016,7 +1120,7 @@
         delete PROJECTS[id];
         if(db) db.collection('projects').doc(id).delete().catch(function(){});
         if(ACTIVE===id) ACTIVE=null;
-        bindActive(); localSave(); renderAll(); renderProjectSheet();
+        bindActive(); localSaveNow(); renderAll(); renderProjectSheet();
         toast('Project deleted');
       });
     });
@@ -1036,6 +1140,18 @@
   var toastEl=document.getElementById('toast'), toastTimer;
   function toast(m){ toastEl.textContent=m; toastEl.classList.add('show');
     clearTimeout(toastTimer); toastTimer=setTimeout(function(){ toastEl.classList.remove('show'); },2200); }
+
+  /* ---- screen theme ----------------------------------------------------
+     A device setting, not a project one: it is about the light you are
+     standing in. "auto" leaves the phone's own preference in charge.      */
+  function currentTheme(){
+    try{ return localStorage.getItem('fieldwork_logger_theme')||'auto'; }catch(e){ return 'auto'; }
+  }
+  function applyTheme(t){
+    if(t==='light' || t==='dark') document.documentElement.setAttribute('data-theme',t);
+    else document.documentElement.removeAttribute('data-theme');
+    try{ localStorage.setItem('fieldwork_logger_theme', t||'auto'); }catch(e){}
+  }
 
   var tabs=document.querySelectorAll('nav.tabbar button[data-tab]');
   tabs.forEach(function(b){ b.addEventListener('click',function(){ showTab(b.dataset.tab); }); });
@@ -1063,10 +1179,15 @@
     var el=document.getElementById(id);
     el.addEventListener('input',function(){ STATE.project[setupFields[id]]=el.value; renderHeader(); save(); });
   });
+  document.getElementById('setTheme').addEventListener('change',function(){
+    applyTheme(this.value);
+  });
   function renderSetup(){
     Object.keys(setupFields).forEach(function(id){
       document.getElementById(id).value = STATE.project[setupFields[id]]||'';
     });
+    var th=document.getElementById('setTheme');
+    if(th) th.value=currentTheme();
     var line=document.getElementById('currentProjectLine');
     if(line){
       var n=Object.keys(PROJECTS).length;
@@ -1099,6 +1220,85 @@
     save(); renderDcpList();
     toast(added?('Added '+added+' DCP test'+(added===1?'':'s')):'Those IDs already exist');
   });
+
+  /* ============================================================ GPS -> MGA
+     The firm's plans are drawn in EPSG:7850 - GDA2020 / MGA Zone 50. That is
+     not a guess: the GIS scripts set CRS_PROJECT = "EPSG:7850", and the
+     figure notes cite "Cadastre: Landgate SLIP, GDA2020 / MGA Zone 50". A
+     phone reports WGS84 lat/lon, and WGS84 at today's epoch sits within
+     about 0.1 m of GDA2020 - far inside the phone's own error - so the fix
+     is projected straight onto the MGA grid and labelled GDA2020.
+
+     It is deliberately NOT called MGA94. That is roughly 1.8 m away in this
+     part of WA, and getting there properly is a datum transformation rather
+     than an offset: do that in the GIS, not on a phone.
+
+     The zone comes from the longitude rather than being fixed at 50, so a
+     job east or west of the usual ground still lands in the right zone, and
+     the zone it used is recorded with the fix.
+
+     Transverse Mercator on GRS80 (Snyder's series - centimetre accurate
+     inside a zone, which is orders of magnitude better than the fix itself).
+     ========================================================================= */
+  function mgaZone(lonDeg){ return Math.floor((lonDeg+180)/6)+1; }
+  function mgaEpsg(zone){ return 7800+zone; }          // GDA2020 MGA: z50 -> 7850
+  function toMga(latDeg, lonDeg, zone){
+    var a=6378137.0, f=1/298.257222101;                // GRS80
+    var e2=f*(2-f), ep2=e2/(1-e2), k0=0.9996;
+    var FE=500000, FN=10000000;                        // southern false northing
+    var rad=Math.PI/180;
+    var phi=latDeg*rad, lam=lonDeg*rad, lam0=(zone*6-183)*rad;
+    var sp=Math.sin(phi), cp=Math.cos(phi), tp=Math.tan(phi);
+    var N=a/Math.sqrt(1-e2*sp*sp);
+    var T=tp*tp, C=ep2*cp*cp, A=(lam-lam0)*cp;
+    var M=a*((1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256)*phi
+           - (3*e2/8 + 3*e2*e2/32 + 45*e2*e2*e2/1024)*Math.sin(2*phi)
+           + (15*e2*e2/256 + 45*e2*e2*e2/1024)*Math.sin(4*phi)
+           - (35*e2*e2*e2/3072)*Math.sin(6*phi));
+    var E=FE + k0*N*(A + (1-T+C)*Math.pow(A,3)/6
+                     + (5-18*T+T*T+72*C-58*ep2)*Math.pow(A,5)/120);
+    var Nn=FN + k0*(M + N*tp*(A*A/2 + (5-T+9*C+4*C*C)*Math.pow(A,4)/24
+                     + (61-58*T+T*T+600*C-330*ep2)*Math.pow(A,6)/720));
+    return {e:E, n:Nn, zone:zone};
+  }
+  function gpsNoteFor(b){
+    if(!b.gps)
+      return 'Fills Easting and Northing as GDA2020 / MGA Zone 50 (EPSG:7850) - the same grid as the site plans. '+
+             'A phone fix is good for a plan, not a substitute for a survey pickup. RL is left alone: a phone’s '+
+             'elevation is far too rough to log.';
+    var g=b.gps;
+    return 'MGA Zone '+g.zone+', GDA2020 (EPSG:'+mgaEpsg(g.zone)+')'+
+           (g.accuracy!=null ? ' · fix to ±'+g.accuracy+' m' : '')+
+           (g.at ? ' · taken '+fmtDate(String(g.at).slice(0,10)) : '')+
+           ' · from '+g.lat.toFixed(6)+', '+g.lon.toFixed(6)+
+           '. Typing over the boxes above is fine - this line just records where the numbers came from.';
+  }
+  // A surveyed pickup must never be silently replaced by a phone fix.
+  function captureGps(b, onDone){
+    if(!navigator.geolocation){ toast('This device has no location service'); return; }
+    var typedByHand = (String(b.coordE||'').trim() || String(b.coordN||'').trim()) && !b.gps;
+    if(typedByHand && !confirm(b.id+' already has coordinates that were not taken by GPS.\n\n'+
+                               'Replace them with a phone fix, which is only accurate to a few metres?'))
+      return;
+    toast('Getting a fix…');
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var la=pos.coords.latitude, lo=pos.coords.longitude, acc=pos.coords.accuracy;
+      var z=mgaZone(lo), p=toMga(la, lo, z);
+      b.coordE=p.e.toFixed(1);
+      b.coordN=p.n.toFixed(1);
+      b.gps={lat:la, lon:lo, accuracy:(acc==null?null:Math.round(acc*10)/10),
+             zone:z, datum:'GDA2020', epsg:mgaEpsg(z), at:new Date().toISOString()};
+      save();
+      if(onDone) onDone();
+      toast(acc!=null && acc>20
+        ? ('Fix taken, but only ±'+Math.round(acc)+' m — try again in the open')
+        : ('Fix taken · ±'+(acc==null?'?':Math.round(acc))+' m · MGA zone '+z));
+    }, function(err){
+      toast(err && err.code===1 ? 'Location refused — allow it in your browser settings'
+          : err && err.code===3 ? 'Timed out waiting for a fix — try again in the open'
+          : 'Could not get a fix here');
+    }, {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+  }
 
   /* ============================================================ boreholes list */
   function bhFlagged(b){ return b.flag || b.intervals.some(function(iv){return iv.flag;}); }
@@ -1185,6 +1385,11 @@
        '<label class="field"><span>Easting</span><input class="mono" inputmode="decimal" data-bh="coordE" value="'+esc(b.coordE)+'"></label>'+
        '<label class="field"><span>Northing</span><input class="mono" inputmode="decimal" data-bh="coordN" value="'+esc(b.coordN)+'"></label>'+
        '<label class="field"><span>RL (m)</span><input class="mono" inputmode="decimal" data-bh="rl" value="'+esc(b.rl)+'"></label></div>';
+    h+='<div class="btn-row" style="margin:-6px 0 6px;">'+
+       '<button class="btn small" id="gpsBtn">◎ Use phone GPS</button>'+
+       (b.gps?'<button class="btn small ghost" id="gpsClear">Clear fix</button>':'')+
+       '</div>';
+    h+='<p class="helptext" style="margin:0 0 12px;">'+esc(gpsNoteFor(b))+'</p>';
     h+='<div class="row">'+
        '<label class="field"><span>Operator</span><input data-bh="operator" value="'+esc(b.operator)+'"></label>'+
        '<label class="field"><span>Logged by</span><input data-bh="loggedBy" value="'+esc(b.loggedBy)+'"></label></div>';
@@ -1239,6 +1444,18 @@
         if(f==='terminationReason') renderBoreholeDetail(b);
       });
     });
+    document.getElementById('gpsBtn').addEventListener('click',function(){
+      captureGps(b, function(){ renderBoreholeDetail(b); renderBoreholeList(); });
+    });
+    (function(){
+      var gc=document.getElementById('gpsClear');
+      if(gc) gc.addEventListener('click',function(){
+        // only the record of where the numbers came from is dropped; the
+        // numbers themselves stay, so a typed correction is not undone
+        b.gps=null; save(); renderBoreholeDetail(b);
+        toast('Fix record cleared - the coordinates are still there');
+      });
+    })();
     document.getElementById('gwChk').addEventListener('change',function(){
       b.gwEncountered=this.checked; save(); renderBoreholeDetail(b);
     });
@@ -1749,7 +1966,12 @@
       var ta=document.getElementById('bulkPaste');
       var vals=ta.value.split(/[\s,]+/).map(function(s){return s.trim();}).filter(Boolean);
       if(!vals.length){ toast('Nothing to add'); return; }
-      d.readings=d.readings.concat(vals.map(function(v){ return {blows:v,soil:''}; }));
+      // Carry on from the last reading actually recorded, dropping the blank
+      // rows that sit after it - a fresh test starts with one, and appending
+      // past it left the top 100 mm empty and pushed every depth down a row.
+      // A blank in the MIDDLE is a real gap, so filledReadings keeps it.
+      d.readings.length=filledReadings(d);
+      vals.forEach(function(v){ d.readings.push({blows:v,soil:''}); });
       ta.value=''; save(); renderDcpRows(d);
       toast('Added '+vals.length+' reading'+(vals.length===1?'':'s'));
     });
@@ -1886,7 +2108,7 @@
              '<input class="mono" data-p="depthTo" data-pid="'+p.id+'" value="'+esc(p.depthTo)+'" placeholder="To m">'+
              '<input class="mono" data-p="tray" data-pid="'+p.id+'" value="'+esc(p.tray)+'" placeholder="Tray #">'+
            '</div>');
-      return '<div class="card">'+
+      return '<div class="card'+(p.flag?' flagged':'')+'">'+
         '<div class="photo-row">'+
           (photoThumbs[p.id]
             ? '<img class="photo-thumb" data-thumb="'+p.id+'" src="'+photoThumbs[p.id]+'" alt="">'
@@ -1898,6 +2120,12 @@
         '<label class="field" style="margin-top:8px;"><span>Caption</span>'+
           '<input data-p="caption" data-pid="'+p.id+'" value="'+esc(p.caption)+'" placeholder="what is in frame"></label>'+
         '<label class="field"><span>'+(currentDeck==='site'?'Direction / subject':'Borehole &amp; depth')+'</span>'+extra+'</label>'+
+        '<div class="flagline"><input type="checkbox" data-pflag="'+p.id+'" '+(p.flag?'checked':'')+'>'+
+          '<label>🚩 Flag — unclear / wrong frame / check before issue</label></div>'+
+        (p.flag
+          ? '<label class="field" style="margin-top:6px;"><span>Note for reviewer</span>'+
+            '<input data-p="flagNote" data-pid="'+p.id+'" value="'+esc(p.flagNote)+'"></label>'
+          : '')+
         '<div class="btn-row"><button class="btn small danger" data-remove-photo="'+p.id+'">Remove photo '+(i+1)+'</button></div>'+
       '</div>';
     }).join('');
@@ -1907,6 +2135,13 @@
       el.addEventListener(ev,function(){
         var p=STATE.photos.find(function(x){return x.id===el.dataset.pid;});
         p[el.dataset.p]=el.value; save();
+      });
+    });
+    host.querySelectorAll('[data-pflag]').forEach(function(el){
+      el.addEventListener('change',function(){
+        var p=STATE.photos.find(function(x){return x.id===el.dataset.pflag;});
+        if(!p) return;
+        p.flag=el.checked; save(); renderPhotoList(); renderExport();
       });
     });
     host.querySelectorAll('[data-pick]').forEach(function(el){
@@ -2090,7 +2325,7 @@
   // yyyy-mm-dd; anything already written dd/mm/yyyy passes through untouched.
   function fmtDate(s){
     s=String(s==null?'':s).trim();
-    var m=s.match(/^(\d{4})-(\d{2})-(\d{2})$$/);
+    var m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return m ? m[3]+'/'+m[2]+'/'+m[1] : s;
   }
   function num(v){ var n=parseFloat(v); return isNaN(n)?null:n; }
@@ -2128,11 +2363,6 @@
     if(n<=7) return 'Medium Dense';
     if(n<=14) return 'Dense';
     return 'Very Dense';
-  }
-  function autoDensityUncertain(blows, soil){
-    var n=blowNum(blows);
-    if(n===null) return false;
-    return (soil||'SAND').toUpperCase()!=='SAND';
   }
   // Prefer the explicitly linked test; otherwise match the trailing number
   // (BH01 -> DCP01), which is how the tests are paired in practice.
@@ -2303,10 +2533,19 @@
   }
   // Depth axis for a DCP sheet follows the deepest test shown on it, so every
   // chart on the page shares one scale and they stay comparable.
+  /* How deep the test actually went. Blank rows left at the end - from "+ Add
+     blank row", or a bulk paste - are not depth, and counting them pushed the
+     chart's axis and the refusal note below the real base of the test. "R" or
+     "HB" alone still counts: that row was logged.                          */
+  function filledReadings(t){
+    var r=(t && t.readings) || [], n=r.length;
+    while(n>0 && String(r[n-1] && r[n-1].blows!=null ? r[n-1].blows : '').trim()==='') n--;
+    return n;
+  }
   function dcpDepthFor(tests){
     var deepest=0;
     (tests||[]).forEach(function(t){
-      deepest=Math.max(deepest, (t.readings?t.readings.length:0)*ROW_M);
+      deepest=Math.max(deepest, filledReadings(t)*ROW_M);
     });
     return fitDepth(deepest);
   }
@@ -2491,7 +2730,7 @@
     });
     var dcpTest=dcpT, endNote=dcpEndNote(dcpTest);
     if(dcpTest && endNote){
-      var endDepth=(dcpTest.readings.length)*ROW_M, er=rowOf(endDepth);
+      var endDepth=filledReadings(dcpTest)*ROW_M, er=rowOf(endDepth);
       if(er!==null) remItems.push({row:er, depth:endDepth.toFixed(1), text:endNote, note:true});
     }
     descItems.sort(function(a,c){ return a.row-c.row; });
@@ -2887,10 +3126,283 @@
     STATE.photos.forEach(function(p){ if(p.flag) out.push({type:'Photo',id:p.filename||p.id,note:p.flagNote}); });
     return out;
   }
+  /* ============================================================ completeness
+     You cannot drive back to Dalwallinu. "Needs review" lists what was
+     flagged on purpose; this lists what was left out by accident, and says
+     what each omission will DO to the printed sheet rather than just naming
+     an empty field - a blank that prints blank is worth knowing about, and a
+     stratum the sheet cannot place silently disappears, which is worse.
+
+     Every check below is tied to something this app's own output needs. None
+     of it is an opinion on the engineering: nothing here says a hole is too
+     shallow or a description is wrong, only that a sheet will come out
+     missing something that was meant to be on it.
+     ========================================================================= */
+  function chk(list, where, what, effect, go){
+    list.push({where:where, what:what, effect:effect, go:go||null});
+  }
+  function hasDescription(iv){
+    if(iv.descManual) return !!String(iv.description||'').trim();
+    if(iv.isRock) return !!(String(iv.rock.name||'').trim() ||
+                            String(iv.rock.duricrustName||'').trim());
+    return !!(iv.d && String(iv.d.name||'').trim());
+  }
+  // Which borehole, if any, this test's blow counts actually reach.
+  function boreholeForDcp(d){
+    if(String(d.boreholeId||'').trim())
+      return STATE.boreholes.filter(function(b){ return b.id===d.boreholeId; })[0] || null;
+    for(var i=0;i<STATE.boreholes.length;i++)
+      if(dcpTestFor(STATE.boreholes[i])===d) return STATE.boreholes[i];
+    return null;
+  }
+  function runChecks(){
+    var must=[], soft=[], pr=STATE.project, setup={tab:'setup'};
+
+    if(!STATE.boreholes.length && !STATE.dcp.length && !STATE.photos.length){
+      chk(must,'This job','Nothing captured yet','There is nothing to produce a sheet from.',setup);
+      return {must:must, soft:soft};
+    }
+
+    /* ---- the job itself: each of these prints on every sheet and deck ---- */
+    [['client','Client'],['projectName','Project name'],['jobNumber','Job number'],
+     ['location','Location'],['date','Date']].forEach(function(f){
+      if(!String(pr[f[0]]||'').trim())
+        chk(must,'Job details',f[1]+' is blank',
+            'Prints blank in the title block of every log sheet and deck.',setup);
+    });
+    if(!String(pr.fieldEngineer||'').trim() &&
+       STATE.boreholes.some(function(b){ return !String(b.loggedBy||'').trim(); }))
+      chk(must,'Job details','No field engineer, and some holes have no "Logged by"',
+          'The log sheet footer prints "Produced By:" blank.',setup);
+
+    /* ---- boreholes ---- */
+    var seenBh={};
+    STATE.boreholes.forEach(function(b){
+      var W=b.id||'unnamed borehole', g={tab:'boreholes', bh:b.id};
+      if(seenBh[b.id])
+        chk(must,W,'Two boreholes share this ID',
+            'The DCP pairing and the exported rows become ambiguous.',g);
+      seenBh[b.id]=true;
+
+      var term=num(b.terminationDepth);
+      if(term===null)
+        chk(must,W,'No termination depth',
+            'No end-of-hole line is drawn and the sheet falls back to a 4 m scale.',g);
+      else if(term<=0)
+        chk(must,W,'Termination depth is not a depth below ground',
+            'The end-of-hole line cannot be placed.',g);
+      if(!String(b.terminationReason||'').trim())
+        chk(must,W,'No termination reason',
+            'Nothing prints under the "End of Borehole" line.',g);
+      if(b.terminationReason==='Other' && !String(b.terminationOther||'').trim())
+        chk(must,W,'Reason is "Other" but never described',
+            'Nothing prints under the "End of Borehole" line.',g);
+      if(!String(b.drillingMethod||'').trim())
+        chk(must,W,'No drilling method / rig','"Drilling Method (Rig):" prints blank.',g);
+      if(b.gwEncountered && num(b.gwDepth)===null)
+        chk(must,W,'Groundwater encountered but no depth given',
+            'The column reads "Groundwater" with no level marked on it.',g);
+      if(!String(b.coordE||'').trim() || !String(b.coordN||'').trim())
+        chk(soft,W,'No coordinates','"Coordinates:" prints blank - fine if the holes were not picked up.',g);
+      else if(b.gps && b.gps.accuracy!=null && b.gps.accuracy>20)
+        chk(soft,W,'GPS fix only ±'+b.gps.accuracy+' m',
+            'Good enough to place the hole on a plan, not to set it out from.',g);
+      if(!String(b.rl||'').trim())
+        chk(soft,W,'No reduced level','"RL(m):" prints blank.',g);
+      if(!String(b.checkedBy||'').trim())
+        chk(soft,W,'Not checked by anyone yet','The footer "Checked By:" prints blank.',g);
+
+      /* -- interval geometry, on a depth-sorted copy so the findings are
+            about the depths themselves and not the order they were typed -- */
+      var geo=[];
+      (b.intervals||[]).forEach(function(iv,i){
+        var f=num(iv.from), t=num(iv.to), L='interval '+(i+1);
+        var described=hasDescription(iv);
+
+        // an untouched spare row is not a mistake
+        if(f===null && t===null && !described) return;
+
+        if(f===null || t===null)
+          chk(must,W+' '+L,'Depth from/to is incomplete',
+              'This stratum is left off the sheet entirely.',g);
+        else geo.push({f:f, t:t, L:L, iv:iv});
+
+        if(!described)
+          chk(must,W+' '+L,'No soil or rock described',
+              'The Material Description column prints blank for this band.',g);
+        else if(iv.isRock && !String(iv.rock.name||'').trim() &&
+                !String(iv.rock.duricrustName||'').trim() && !iv.descManual)
+          chk(must,W+' '+L,'Marked as rock with no rock or duricrust named',
+              'The description prints empty.',g);
+
+        if(iv.spt && !sptResult(iv.spt))
+          chk(must,W+' '+L,'SPT added but no result',
+              'Field Records prints "SPT" with nothing after it.',g);
+        (iv.samples||[]).forEach(function(s,si){
+          var touched = String(s.type||'').trim() || String(s.detail||'').trim() ||
+                        String(s.to||'').trim();
+          if(touched && num(s.from)===null)
+            chk(must,W+' '+L,'Sample '+(si+1)+' has no depth',
+                'No marker is drawn in the Samples column.',g);
+        });
+      });
+
+      if(!geo.length && (b.intervals||[]).length)
+        chk(must,W,'No strata described',
+            'The Material Description column is empty down the whole hole.',g);
+
+      geo.sort(function(x,y){ return x.f-y.f; });
+      var deepest=null;
+      geo.forEach(function(s,i){
+        if(s.t<=s.f)
+          chk(must,W+' '+s.L,'To ('+s.t+' m) is not below From ('+s.f+' m)',
+              'Zero or negative thickness - nothing is drawn for it.',g);
+        if(i===0 && s.f>1e-6)
+          chk(must,W+' '+s.L,'The hole starts at '+s.f+' m, not 0',
+              'The top '+s.f+' m of the sheet prints blank.',g);
+        if(deepest!==null){
+          if(s.f>deepest+1e-6)
+            chk(must,W+' '+s.L,'Gap between '+deepest.toFixed(2)+' m and '+s.f+' m',
+                'That band prints blank on the sheet.',g);
+          else if(s.f<deepest-1e-6)
+            chk(must,W+' '+s.L,'Overlaps the stratum above, which reaches '+deepest.toFixed(2)+' m',
+                'Only one of the two is drawn over the shared depths; the other is hidden.',g);
+        }
+        if(term!==null && s.f>=term-1e-6)
+          chk(must,W+' '+s.L,'Starts at or below the end of hole ('+b.terminationDepth+' m)',
+              'It is not drawn at all.',g);
+        else if(term!==null && s.t>term+1e-6)
+          chk(soft,W+' '+s.L,'Reaches past the end of hole ('+b.terminationDepth+' m)',
+              'It is cut off at the end-of-hole line.',g);
+        deepest = deepest===null ? s.t : Math.max(deepest, s.t);
+      });
+      if(term!==null && deepest!==null && deepest<term-1e-6)
+        chk(must,W,'Strata stop at '+deepest.toFixed(2)+' m but the hole ends at '+b.terminationDepth+' m',
+            'The band in between prints blank.',g);
+
+      // a note pinned to a depth it never got is dropped from the sheet
+      [['observations','Observation'],['remarks','Comment']].forEach(function(k){
+        (b[k[0]]||[]).forEach(function(o,i){
+          if(String(o.text||'').trim() && num(o.depth)===null)
+            chk(must,W,k[1]+' '+(i+1)+' has text but no depth',
+                'It is left off the sheet entirely.',g);
+        });
+      });
+    });
+
+    /* ---- DCP / PSP ---- */
+    var seenDcp={};
+    STATE.dcp.forEach(function(d){
+      var W=d.id||'unnamed test', g={tab:'dcp', dcp:d.id};
+      if(seenDcp[d.id])
+        chk(must,W,'Two tests share this ID','They collide in the CSV and the pairing is ambiguous.',g);
+      seenDcp[d.id]=true;
+
+      var n=filledReadings(d);
+      if(!n){
+        chk(must,W,'No blow counts recorded','The chart prints empty.',g);
+        return;
+      }
+      if(!String(d.refusalType||'').trim())
+        chk(must,W,'No termination recorded',
+            'Neither the DCP sheet nor the borehole log gets an end-of-test note.',g);
+      d.readings.slice(0,n).forEach(function(r,i){
+        var v=String(r.blows==null?'':r.blows).trim(), at=((i+1)*100)+' mm';
+        if(!v){
+          chk(soft,W,'Nothing recorded at '+at,
+              'That increment prints blank - fine if it is a real gap.',g);
+          return;
+        }
+        if(blowNum(v)===null)
+          chk(must,W,'"'+v+'" at '+at+' is not a blow count',
+              'No bar is drawn for that increment, though the text still prints.',g);
+      });
+      if(String(d.boreholeId||'').trim() && !boreholeForDcp(d))
+        chk(must,W,'Linked to "'+d.boreholeId+'", which is not a borehole here',
+            'Its blow counts reach no borehole log.',g);
+      else if(!boreholeForDcp(d))
+        chk(soft,W,'Not paired to a borehole',
+            'Its blow counts do not reach any log sheet - fine for a standalone test.',g);
+      if(!String(d.engineer||'').trim() && !String(pr.fieldEngineer||'').trim())
+        chk(soft,W,'No engineer initials',
+            'The DCP sheet takes Engineer from the first test on each page, so it may print blank.',g);
+      if(!String(d.testDate||'').trim() && !String(pr.date||'').trim())
+        chk(soft,W,'No test date',
+            'The DCP sheet takes Test Date from the first test on each page, so it may print blank.',g);
+    });
+
+    /* ---- photos ---- */
+    STATE.photos.forEach(function(p,i){
+      var side=(p.deck==='site')?'site':'borehole';
+      var W=(p.filename||p.caption||('photo '+(i+1))).slice(0,28);
+      var g={tab:'photos', deck:side};
+      var img=!!(p.hasImage || photoThumbs[p.id]);
+      var cap=!!String(p.caption||'').trim();
+      if(!img && !cap){
+        chk(soft,W,'Empty photo row','It is skipped when the deck is built.',g);
+        return;
+      }
+      if(!img)
+        chk(must,W,'Captioned but no image attached','It prints as a blank grey box in the deck.',g);
+      if(!cap)
+        chk(must,W,'Image with no caption','The line under it prints as "Photograph '+(i+1)+': ."',g);
+      if(side==='borehole'){
+        if(!String(p.boreholeId||'').trim())
+          chk(must,W,'Borehole photo with no borehole chosen','The label above it prints "BH".',g);
+        if(num(p.depthFrom)===null || num(p.depthTo)===null)
+          chk(soft,W,'No depth range','No depth ticks are drawn down either side of it.',g);
+      }
+    });
+
+    return {must:must, soft:soft};
+  }
+
+  function issueHtml(it, idx, kind){
+    return '<button class="issue '+kind+'" data-go="'+idx+'" type="button">'+
+      '<span class="where">'+esc(it.where)+'</span>'+
+      '<span class="what">'+esc(it.what)+'</span>'+
+      '<span class="effect">'+esc(it.effect)+'</span></button>';
+  }
+  function renderChecks(res){
+    var host=document.getElementById('checkBody');
+    if(!host) return;
+    var all=res.must.concat(res.soft), h='';
+    if(!all.length){
+      host.innerHTML='<div class="allclear">Nothing missing &mdash; every sheet has what it needs.</div>';
+      return;
+    }
+    if(res.must.length){
+      h+='<div class="issue-head must">Must fix &mdash; '+res.must.length+'</div>';
+      h+=res.must.map(function(it,i){ return issueHtml(it,i,'must'); }).join('');
+    }
+    if(res.soft.length){
+      h+='<div class="issue-head">Worth a look &mdash; '+res.soft.length+'</div>';
+      h+=res.soft.map(function(it,i){
+        return issueHtml(it, res.must.length+i, 'soft');
+      }).join('');
+    }
+    host.innerHTML=h;
+    host.querySelectorAll('[data-go]').forEach(function(el){
+      el.addEventListener('click',function(){
+        var g=all[parseInt(el.dataset.go,10)].go;
+        if(!g) return;
+        showTab(g.tab);
+        if(g.bh) openBorehole(g.bh);
+        else if(g.dcp) openDcp(g.dcp);
+        else if(g.deck){ currentDeck=g.deck; syncDeckTabs(); renderPhotoList(); }
+      });
+    });
+  }
+
   function renderExport(){
     var flags=collectFlags();
+    var checks=runChecks();
+    renderChecks(checks);
+    // The badge is what you see from any tab, so it counts everything still
+    // wanting attention: what you flagged, plus what was left out.
     var badge=document.getElementById('flagBadge');
-    if(flags.length){ badge.hidden=false; badge.textContent=flags.length; } else { badge.hidden=true; }
+    var pending=flags.length+checks.must.length;
+    if(pending){ badge.hidden=false; badge.textContent=pending; } else { badge.hidden=true; }
     var ivCount=STATE.boreholes.reduce(function(n,b){
       return n+b.intervals.filter(function(iv){ return iv.description||iv.d.name; }).length; },0);
     var readingCount=STATE.dcp.reduce(function(n,d){
@@ -3010,11 +3522,139 @@
     doSave(projSlug()+'_photos.csv', rows.map(function(r){ return r.map(csvCell).join(','); }).join('\n'));
   });
 
+  /* ============================================================ import
+     Export is the only way a job leaves a phone, so it has to be the way one
+     arrives: a second logger's holes, a handover, a job put back after a
+     wipe. Nothing already here is replaced without being asked first.
+     ========================================================================= */
+  function looksLikeProject(o){
+    return !!o && typeof o==='object' && !(o instanceof Array) &&
+           !!(o.project || o.boreholes || o.dcp || o.photos);
+  }
+  /* Accepts one project - what Export writes - or a file holding several,
+     whether keyed by project id or listed in an array. mergeState does the
+     rest: it fills out every shape and drops derived fields like
+     descriptionResolved, which are rebuilt from the selections anyway. */
+  function recordsIn(parsed){
+    if(looksLikeProject(parsed)) return [mergeState(parsed)];
+    var out=[];
+    if(parsed instanceof Array){
+      parsed.forEach(function(x){ if(looksLikeProject(x)) out.push(mergeState(x)); });
+    } else if(parsed && typeof parsed==='object'){
+      Object.keys(parsed).forEach(function(k){
+        if(looksLikeProject(parsed[k])) out.push(mergeState(parsed[k]));
+      });
+    }
+    return out;
+  }
+  /* The same job number is the same job. Where either side never got one, the
+     project name has to stand in, so a job does not quietly arrive twice. */
+  function existingIdFor(rec){
+    var j=String(rec.project.jobNumber||'').trim().toLowerCase();
+    var n=String(rec.project.projectName||'').trim().toLowerCase();
+    var ids=Object.keys(PROJECTS);
+    for(var i=0;i<ids.length;i++){
+      var p=PROJECTS[ids[i]];
+      var pj=String(p.project.jobNumber||'').trim().toLowerCase();
+      var pn=String(p.project.projectName||'').trim().toLowerCase();
+      if(j && pj){ if(j===pj) return ids[i]; continue; }
+      if(n && pn && n===pn) return ids[i];
+    }
+    return null;
+  }
+  /* The photographs are not in the file. Keep hasImage set only where the
+     picture really is on this device, or the deck would count images it
+     cannot print and the thumbnails would sit empty with no explanation. */
+  function reconcilePhotos(rec){
+    return Promise.all((rec.photos||[]).map(function(p){
+      if(!p.hasImage) return 0;
+      return idbGet(p.id).then(function(d){
+        if(d) return 0;
+        p.hasImage=false; return 1;
+      });
+    })).then(function(flags){
+      return flags.reduce(function(a,b){ return a+b; },0);
+    });
+  }
+  function importParsed(parsed){
+    var recs=recordsIn(parsed);
+    if(!recs.length){ toast('No project data in that file'); return; }
+    var touched=[], added=0, replaced=0, lastId=null;
+    recs.forEach(function(rec){
+      var hit=existingIdFor(rec), id;
+      if(hit){
+        if(confirm('"'+projectLabel(PROJECTS[hit])+'" is already on this phone.\n\n'+
+                   'OK replaces it with the imported copy - its boreholes, DCP tests '+
+                   'and photo rows are overwritten.\n\n'+
+                   'Cancel keeps both, as a second project.')){
+          id=hit; replaced++;
+        } else {
+          id=uid('p'); added++;
+          rec.project.projectName=(rec.project.projectName||'Untitled')+' (imported)';
+        }
+      } else { id=uid('p'); added++; }
+      // The import is the latest edit on this record. Without this a newer
+      // synced copy would win the next snapshot and undo the whole import.
+      rec.updatedAt=Date.now();
+      PROJECTS[id]=rec; touched.push(id); lastId=id;
+    });
+    Promise.all(recs.map(reconcilePhotos)).then(function(counts){
+      var noImage=counts.reduce(function(a,b){ return a+b; },0);
+      // one project in means you came here to work on it
+      if(recs.length===1 && lastId) ACTIVE=lastId;
+      bindActive(); localSaveNow();
+      if(db) touched.forEach(function(pid){
+        db.collection('projects').doc(pid).set(PROJECTS[pid]).catch(function(){});
+      });
+      renderAll(); renderProjectSheet();
+      var bits=[];
+      if(added) bits.push(added+' added');
+      if(replaced) bits.push(replaced+' replaced');
+      toast('Imported: '+bits.join(', ')+
+            (noImage?(' - '+noImage+' photo row'+(noImage===1?'':'s')+' without images'):''));
+    }).catch(function(err){
+      toast('Imported, but could not check the photos: '+
+            (err && err.message ? err.message : 'unknown error'));
+      bindActive(); localSaveNow(); renderAll();
+    });
+  }
+  (function(){
+    var impEl=document.getElementById('impJson');
+    if(!impEl) return;
+    impEl.addEventListener('change',function(){
+      var f=impEl.files && impEl.files[0];
+      if(!f){ return; }
+      if(f.size > 25*1024*1024){
+        impEl.value='';
+        toast('That file is far too big to be a project export');
+        return;
+      }
+      var fr=new FileReader();
+      fr.onerror=function(){ impEl.value=''; toast('Could not read that file'); };
+      fr.onload=function(){
+        impEl.value='';              // so the same file can be picked again
+        var parsed;
+        try{ parsed=JSON.parse(String(fr.result)); }
+        catch(e){ toast('That file is not readable JSON'); return; }
+        try{ importParsed(parsed); }
+        catch(e){ toast('Could not import that file: '+(e && e.message ? e.message : 'unknown error')); }
+      };
+      fr.readAsText(f);
+    });
+  })();
+
   /* ============================================================ boot */
   function renderAll(){
     renderHeader(); renderSetup(); renderBoreholeList(); renderDcpList();
     syncDeckTabs(); renderPhotoList(); renderExport(); renderProjectSheet();
   }
+  applyTheme(currentTheme());
+  // A day's logging can be the only copy there is. Ask the browser not to
+  // evict it the next time the phone is short of space.
+  try{
+    if(navigator.storage && navigator.storage.persist)
+      navigator.storage.persist().catch(function(){});
+  }catch(e){}
   var savedProjects=localLoad();
   if(savedProjects){
     Object.keys(savedProjects).forEach(function(id){ PROJECTS[id]=mergeState(savedProjects[id]); });
@@ -3601,4 +4241,50 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<style>
+/* ---- Phone sizing -------------------------------------------------------
+   Measured on a 375 px iPhone viewport before this block existed: fields were
+   14.7 px, buttons 26-37 px tall, checkboxes 13 px square. Two consequences on
+   site - iOS zooms the whole page in whenever you tap a box whose text is
+   under 16 px, and none of those targets survive a wet or gloved finger.
+   Scoped to phone widths, so the desktop layout is untouched. Selectors are
+   prefixed with `body` purely to out-rank the base rules without !important.
+------------------------------------------------------------------------- */
+@media (max-width: 560px){
+  body input:not([type=checkbox]):not([type=radio]),
+  body select,
+  body textarea{
+    font-size:16px;          /* anything less and iOS zooms on focus */
+    min-height:46px;
+    padding:11px 12px;
+  }
+  body table.dcp-table td input,
+  body table.dcp-table td select{
+    font-size:16px;
+    min-height:44px;
+    padding:8px;
+  }
+  body textarea{ min-height:92px; }
+
+  body .btn{ min-height:46px; padding:12px 16px; font-size:.95rem; }
+  body .btn.small{ min-height:40px; padding:9px 12px; font-size:.86rem; }
+  body .subtabs button{ min-height:46px; font-size:.9rem; }
+  body .movecol button{ min-height:40px; }
+  body nav.tabbar button{ min-height:56px; font-size:.62rem; }
+  body .list-item{ min-height:56px; }
+
+  /* .flagline / .toggle-line set width:auto on these, which out-ranks a
+     plainer selector - hence naming them here */
+  body input[type=checkbox],
+  body .flagline input[type=checkbox],
+  body .toggle-line input[type=checkbox]{
+    width:26px; height:26px; min-height:0; flex:0 0 auto;
+  }
+  body .flagline, body .toggle-line{ align-items:center; gap:12px; }
+
+  /* clear the tab bar and the floating mic, and keep a focused field from
+     sitting under the on-screen keyboard */
+  body{ padding-block:16px 140px; scroll-padding-bottom:140px; }
+}
+</style>
 </body></html>
