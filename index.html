@@ -260,6 +260,36 @@
   .pickbtn{position:relative; overflow:hidden; cursor:pointer;}
   .pickbtn input[type=file]{position:absolute; inset:0; opacity:0;
     width:100%; height:100%; cursor:pointer;}
+
+  /* ---- one-tap GPS on each borehole row -------------------------------- */
+  .gpscol{display:flex; flex:none;}
+  .gpscol .btn{min-width:44px; padding:0 10px; font-size:1.05rem; line-height:1;}
+  .gpscol .btn.has{color:var(--accent); border-color:var(--accent);}
+
+  /* ---- the live fix panel ----------------------------------------------
+     Accuracy is the headline because it is the number that decides whether
+     the point is worth keeping. Green at or under 6 m, amber to 15 m, red
+     beyond - a red figure is a Wi-Fi fix, not satellites.                */
+  .fixsheet{position:fixed; inset:0; z-index:40; background:rgba(0,0,0,.45);
+    display:flex; align-items:flex-end; justify-content:center; padding:16px;}
+  .fixsheet[hidden]{display:none;}
+  .fixcard{background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:16px; width:100%; max-width:420px;
+    margin-bottom:calc(8px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 10px 40px rgba(0,0,0,.28);}
+  .fixcard h3{margin:0 0 10px; font-size:1rem;}
+  .fixbig{font-size:2.1rem; font-weight:800; line-height:1.1;
+    font-variant-numeric:tabular-nums; color:var(--ink-dim);}
+  .fixbig.good{color:var(--accent);}
+  .fixbig.ok{color:var(--flag);}
+  .fixbig.poor{color:#d23b2e;}
+  .fixsub{font-size:.76rem; color:var(--ink-dim); margin:4px 0 10px; line-height:1.45;}
+  .fixbar{height:6px; border-radius:3px; background:var(--line);
+    overflow:hidden; margin-bottom:10px;}
+  .fixbar i{display:block; height:100%; width:4%; background:var(--accent);
+    transition:width .25s linear;}
+  .fixcoords{font-family:var(--font-mono); font-size:.76rem; line-height:1.5;
+    white-space:pre-wrap; margin:0 0 12px; color:var(--ink);}
 </style>
 
 
@@ -1331,35 +1361,184 @@
     var g=b.gps;
     return 'MGA Zone '+g.zone+', GDA2020 (EPSG:'+mgaEpsg(g.zone)+')'+
            (g.accuracy!=null ? ' · fix to ±'+g.accuracy+' m' : '')+
+           (g.readings ? ' · averaged from '+g.readings+' readings' : '')+
+           (g.spread!=null ? ' spread over '+g.spread+' m' : '')+
            (g.at ? ' · taken '+fmtDate(String(g.at).slice(0,10)) : '')+
            ' · from '+g.lat.toFixed(6)+', '+g.lon.toFixed(6)+
            '. Typing over the boxes above is fine - this line just records where the numbers came from.';
   }
+  /* ----------------------------------------------------------- taking a fix
+     A phone hands back whatever it already has the instant you ask it, and
+     that first answer is nearly always the Wi-Fi / mobile-tower estimate,
+     which can sit a hundred metres or more from where you are standing. The
+     satellites take ten to thirty seconds to come in behind it. Saving that
+     first reading is why a stored point can land well off the hole.
+
+     So a fix is now WATCHED rather than asked for once. Readings stream in
+     for up to half a minute, the coarse early ones are dropped, and what is
+     kept is an inverse-variance mean of the rest. The panel shows the
+     accuracy live, so you can watch it tighten and stop when it is good
+     enough - or keep waiting if it is not.                                */
+  var FIX={ id:null, samples:[], timer:null, tick:null, b:null, onDone:null, t0:0 };
+  var FIX_WINDOW=30000;   // listen this long before offering what we have
+  var FIX_GOOD=6;         // metres - stop early once this good
+
+  function metresApart(a1,o1,a2,o2){
+    var R=6371000, r=Math.PI/180;
+    var dA=(a2-a1)*r, dO=(o2-o1)*r;
+    var s=Math.sin(dA/2)*Math.sin(dA/2) +
+          Math.cos(a1*r)*Math.cos(a2*r)*Math.sin(dO/2)*Math.sin(dO/2);
+    return 2*R*Math.asin(Math.min(1,Math.sqrt(s)));
+  }
+  /* Keep the readings in the same league as the best one, then weight them
+     by 1/accuracy^2. The accuracy REPORTED stays that of the best single
+     reading and is never reduced: averaging does tighten the estimate, but
+     printing a smaller number than any instrument gave would be inventing
+     precision on a log sheet. The spread is shown instead, so you can see
+     for yourself how much the readings disagreed.                        */
+  function bestFix(samples){
+    if(!samples.length) return null;
+    var a0=Math.min.apply(null, samples.map(function(s){ return s.acc==null?9999:s.acc; }));
+    var keep=samples.filter(function(s){
+      var a=(s.acc==null?9999:s.acc); return a<=Math.max(a0*2, a0+5);
+    });
+    var sw=0, la=0, lo=0;
+    keep.forEach(function(s){
+      var a=Math.max(1,(s.acc==null?9999:s.acc)), w=1/(a*a);
+      sw+=w; la+=s.lat*w; lo+=s.lon*w;
+    });
+    var lat=la/sw, lon=lo/sw, spread=0;
+    keep.forEach(function(s){ spread=Math.max(spread, metresApart(lat,lon,s.lat,s.lon)); });
+    return { lat:lat, lon:lon, acc:Math.round(a0*10)/10, kept:keep.length,
+             seen:samples.length, spread:Math.round(spread*10)/10 };
+  }
+
+  function fixSheet(){
+    var el=document.getElementById('fixSheet');
+    if(el) return el;
+    el=document.createElement('div');
+    el.id='fixSheet'; el.className='fixsheet'; el.hidden=true;
+    el.innerHTML='<div class="fixcard">'+
+      '<h3 id="fixTitle">Fix</h3>'+
+      '<div class="fixbig" id="fixAcc">&mdash;</div>'+
+      '<div class="fixsub" id="fixSub"></div>'+
+      '<div class="fixbar"><i id="fixBarI"></i></div>'+
+      '<pre class="fixcoords" id="fixCoords"></pre>'+
+      '<div class="btn-row" id="fixBtns"></div></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+  function stopFix(){
+    if(FIX.id!=null){ try{ navigator.geolocation.clearWatch(FIX.id); }catch(e){} FIX.id=null; }
+    clearTimeout(FIX.timer); clearInterval(FIX.tick); FIX.timer=null; FIX.tick=null;
+  }
+  function closeFix(){
+    stopFix();
+    var el=document.getElementById('fixSheet'); if(el) el.hidden=true;
+    FIX.b=null; FIX.onDone=null; FIX.samples=[];
+  }
+  function paintFix(){
+    var accEl=document.getElementById('fixAcc'); if(!accEl) return;
+    var f=bestFix(FIX.samples), secs=Math.round((Date.now()-FIX.t0)/1000);
+    if(!f){ document.getElementById('fixSub').textContent='waiting for the first reading… '+secs+'s'; return; }
+    accEl.textContent='±'+f.acc+' m';
+    accEl.className='fixbig '+(f.acc<=FIX_GOOD?'good':f.acc<=15?'ok':'poor');
+    document.getElementById('fixSub').textContent=
+      f.kept+' of '+f.seen+' readings kept · they spread '+f.spread+' m · '+secs+'s'+
+      (f.acc>50 ? ' · this looks like a Wi-Fi fix, not satellites - step into the open' : '');
+    document.getElementById('fixBarI').style.width=
+      Math.max(4, Math.min(100, Math.round(100*FIX_GOOD/Math.max(FIX_GOOD,f.acc))))+'%';
+    var z=mgaZone(f.lon), p=toMga(f.lat,f.lon,z);
+    document.getElementById('fixCoords').textContent=
+      'MGA Zone '+z+'  ·  GDA2020 (EPSG:'+mgaEpsg(z)+')\nE  '+p.e.toFixed(1)+'\nN  '+p.n.toFixed(1);
+  }
+  function finishFix(){
+    stopFix();
+    var f=bestFix(FIX.samples), b=FIX.b;
+    if(!f){
+      document.getElementById('fixSub').textContent='No reading came back - try again in the open';
+      renderFixBtns('failed'); return;
+    }
+    paintFix();
+    // A re-check must show what it would change before it changes anything.
+    if(b && b.gps){
+      document.getElementById('fixCoords').textContent +=
+        '\n\nAlready stored   E '+b.coordE+'   N '+b.coordN+
+        '  (±'+(b.gps.accuracy==null?'?':b.gps.accuracy)+' m)'+
+        '\nThe new fix is '+metresApart(b.gps.lat,b.gps.lon,f.lat,f.lon).toFixed(1)+' m from it.';
+    }
+    renderFixBtns('done');
+  }
+  function applyFix(){
+    var f=bestFix(FIX.samples), b=FIX.b, cb=FIX.onDone;
+    if(!f || !b){ closeFix(); return; }
+    var z=mgaZone(f.lon), p=toMga(f.lat,f.lon,z);
+    b.coordE=p.e.toFixed(1);
+    b.coordN=p.n.toFixed(1);
+    b.gps={lat:f.lat, lon:f.lon, accuracy:f.acc, readings:f.kept, spread:f.spread,
+           zone:z, datum:'GDA2020', epsg:mgaEpsg(z), at:new Date().toISOString()};
+    save();
+    var id=b.id, acc=f.acc;
+    closeFix();
+    if(cb) cb();
+    renderBoreholeList();
+    toast('Fix saved for '+id+' · ±'+acc+' m');
+  }
+  function renderFixBtns(state){
+    var row=document.getElementById('fixBtns'); if(!row) return;
+    row.innerHTML='';
+    function add(label, cls, fn){
+      var btn=document.createElement('button');
+      btn.className='btn small '+(cls||''); btn.textContent=label;
+      btn.addEventListener('click', fn); row.appendChild(btn);
+    }
+    if(state==='running'){
+      add('Use what we have','primary', finishFix);
+      add('Cancel','ghost', closeFix);
+    } else if(state==='done'){
+      var hasOld=!!(FIX.b && FIX.b.gps);
+      add(hasOld?'Replace with new':'Save fix','primary', applyFix);
+      add('Keep waiting','ghost', function(){ var b=FIX.b, cb=FIX.onDone; closeFix(); captureGps(b,cb); });
+      add(hasOld?'Keep the old one':'Discard','ghost', closeFix);
+    } else {
+      add('Try again','primary', function(){ var b=FIX.b, cb=FIX.onDone; closeFix(); captureGps(b,cb); });
+      add('Close','ghost', closeFix);
+    }
+  }
   // A surveyed pickup must never be silently replaced by a phone fix.
   function captureGps(b, onDone){
+    if(!b) return;
     if(!navigator.geolocation){ toast('This device has no location service'); return; }
     var typedByHand = (String(b.coordE||'').trim() || String(b.coordN||'').trim()) && !b.gps;
     if(typedByHand && !confirm(b.id+' already has coordinates that were not taken by GPS.\n\n'+
                                'Replace them with a phone fix, which is only accurate to a few metres?'))
       return;
-    toast('Getting a fix…');
-    navigator.geolocation.getCurrentPosition(function(pos){
-      var la=pos.coords.latitude, lo=pos.coords.longitude, acc=pos.coords.accuracy;
-      var z=mgaZone(lo), p=toMga(la, lo, z);
-      b.coordE=p.e.toFixed(1);
-      b.coordN=p.n.toFixed(1);
-      b.gps={lat:la, lon:lo, accuracy:(acc==null?null:Math.round(acc*10)/10),
-             zone:z, datum:'GDA2020', epsg:mgaEpsg(z), at:new Date().toISOString()};
-      save();
-      if(onDone) onDone();
-      toast(acc!=null && acc>20
-        ? ('Fix taken, but only ±'+Math.round(acc)+' m — try again in the open')
-        : ('Fix taken · ±'+(acc==null?'?':Math.round(acc))+' m · MGA zone '+z));
+    FIX.b=b; FIX.onDone=onDone; FIX.samples=[]; FIX.t0=Date.now();
+    var el=fixSheet(); el.hidden=false;
+    document.getElementById('fixTitle').textContent=(b.gps?'Re-check ':'Fix for ')+b.id;
+    document.getElementById('fixAcc').textContent='—';
+    document.getElementById('fixAcc').className='fixbig';
+    document.getElementById('fixCoords').textContent='';
+    document.getElementById('fixSub').textContent='waiting for the first reading…';
+    document.getElementById('fixBarI').style.width='4%';
+    renderFixBtns('running');
+    FIX.tick=setInterval(paintFix, 250);
+    FIX.timer=setTimeout(finishFix, FIX_WINDOW);
+    FIX.id=navigator.geolocation.watchPosition(function(pos){
+      FIX.samples.push({ lat:pos.coords.latitude, lon:pos.coords.longitude,
+        acc:(pos.coords.accuracy==null?null:Math.round(pos.coords.accuracy*10)/10) });
+      paintFix();
+      var f=bestFix(FIX.samples);
+      if(f && f.acc<=FIX_GOOD && f.kept>=3) finishFix();
     }, function(err){
-      toast(err && err.code===1 ? 'Location refused — allow it in your browser settings'
-          : err && err.code===3 ? 'Timed out waiting for a fix — try again in the open'
-          : 'Could not get a fix here');
-    }, {enableHighAccuracy:true, timeout:20000, maximumAge:0});
+      stopFix();
+      var sub=document.getElementById('fixSub');
+      if(sub) sub.textContent =
+          err && err.code===1 ? 'Location refused - allow it in your browser settings'
+        : err && err.code===3 ? 'Timed out waiting for a fix - try again in the open'
+        : 'Could not get a fix here';
+      renderFixBtns(FIX.samples.length ? 'done' : 'failed');
+    }, {enableHighAccuracy:true, timeout:FIX_WINDOW, maximumAge:0});
   }
 
   /* ============================================================ boreholes list */
@@ -1372,11 +1551,19 @@
     host.innerHTML = STATE.boreholes.map(function(b,i){
       var depth = b.terminationDepth ? b.terminationDepth+' m' : 'no depth yet';
       var n = b.intervals.filter(function(iv){ return iv.description || iv.d.name; }).length;
+      // The fix is shown on the row itself, so walking the site you can see
+      // at a glance which holes still need one and which were only tagged
+      // from a poor reading.
+      var fix = b.gps ? ' · ◎ ±'+(b.gps.accuracy==null?'?':b.gps.accuracy)+' m' : '';
       return '<div class="list-row"><button class="list-item" data-open-bh="'+esc(b.id)+'">'+
         '<span class="id">'+esc(b.id)+'</span>'+
-        '<span class="sub">'+esc(depth)+' · '+n+' interval'+(n===1?'':'s')+'</span>'+
+        '<span class="sub">'+esc(depth)+' · '+n+' interval'+(n===1?'':'s')+esc(fix)+'</span>'+
         (bhFlagged(b)?'<span class="flagdot" title="Flagged"></span>':'')+
         '<span class="chev">&rsaquo;</span></button>'+
+        '<div class="gpscol">'+
+          '<button class="btn small ghost'+(b.gps?' has':'')+'" data-gps-bh="'+esc(b.id)+'" '+
+            'title="'+(b.gps?'Re-check this fix':'Take a GPS fix at this hole')+'">◎</button>'+
+        '</div>'+
         '<div class="movecol">'+
           '<button class="btn small ghost" data-move-bh="'+i+'" data-dir="-1" title="Move up">&#9650;</button>'+
           '<button class="btn small ghost" data-move-bh="'+i+'" data-dir="1" title="Move down">&#9660;</button>'+
@@ -1388,6 +1575,15 @@
         if(j<0 || j>=STATE.boreholes.length) return;
         var t=STATE.boreholes[i]; STATE.boreholes[i]=STATE.boreholes[j]; STATE.boreholes[j]=t;
         save(); renderBoreholeList();
+      });
+    });
+    host.querySelectorAll('[data-gps-bh]').forEach(function(el){
+      el.addEventListener('click',function(ev){
+        ev.stopPropagation();
+        var id=el.dataset.gpsBh;
+        var b=null;
+        STATE.boreholes.forEach(function(x){ if(x.id===id) b=x; });
+        captureGps(b, function(){ renderBoreholeList(); });
       });
     });
     host.querySelectorAll('[data-open-bh]').forEach(function(el){
@@ -1516,7 +1712,7 @@
        '<label class="field"><span>Northing</span><input class="mono" inputmode="decimal" data-bh="coordN" value="'+esc(b.coordN)+'"></label>'+
        '<label class="field"><span>RL (m)</span><input class="mono" inputmode="decimal" data-bh="rl" value="'+esc(b.rl)+'"></label></div>';
     h+='<div class="btn-row" style="margin:-6px 0 6px;">'+
-       '<button class="btn small" id="gpsBtn">◎ Use phone GPS</button>'+
+       '<button class="btn small" id="gpsBtn">◎ '+(b.gps?'Re-check fix':'Use phone GPS')+'</button>'+
        (b.gps?'<button class="btn small ghost" id="gpsClear">Clear fix</button>':'')+
        '</div>';
     h+='<p class="helptext" style="margin:0 0 12px;">'+esc(gpsNoteFor(b))+'</p>';
