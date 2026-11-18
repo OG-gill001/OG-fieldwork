@@ -9,6 +9,220 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>OG Fieldwork</title>
+
+<!-- ======================================================================
+     Opening splash.
+     Lives here, first thing in the body, so it paints before anything else
+     and covers the half-built page while the logo, the PDF engine and the
+     saved job all come up.
+
+     It is driven by CSS, not script: the fade-out is a keyframe with
+     fill-mode forwards, so even if the scripts below fail outright the
+     splash still clears itself and the app is reachable. The script only
+     drops the dead node afterwards and handles tap-to-skip.
+
+     The logo is grey and green on transparency, so it goes on a white
+     card - straight onto the green field it would barely read.
+     ====================================================================== -->
+<style>
+  .splash{
+    position:fixed; inset:0; z-index:9999; overflow:hidden;
+    font-size:min(3.3vw,15px);
+    background:linear-gradient(168deg,#2f714f 0%,#1f5036 48%,#102a1d 100%);
+    -webkit-user-select:none; user-select:none; cursor:pointer;
+    animation:spOut .4s ease 1.8s forwards;
+  }
+  /* Everything in the drawing is sized in em off that font-size, so the whole
+     section scales as one from a 375px phone to a laptop. */
+  @media (min-width:760px){ .splash{font-size:min(1.5vw,20px);} }
+  @keyframes spOut{ to{ opacity:0; visibility:hidden; pointer-events:none; } }
+
+  /* Surface and strata. Layer boundaries sit at 0, 3.5, 8 and 13 m against
+     the scale on the right, so the drawing and the numbers agree.        */
+  .sp-sky{position:absolute; left:0; right:0; top:0; height:13%;
+    background:linear-gradient(180deg,#3f8d64,#2f714f);
+    animation:spFade .3s ease both;}
+  .sp-ground{position:absolute; left:0; right:0; top:13%; height:1.1em;
+    border-top:.16em solid rgba(255,255,255,.85); transform-origin:left;
+    background:repeating-linear-gradient(115deg,rgba(255,255,255,.75) 0 .14em,transparent .14em 1.1em);
+    animation:spWipe .5s cubic-bezier(.3,.8,.3,1) .06s both;}
+  .sp-lay{position:absolute; left:0; right:0; transform-origin:left;
+    border-bottom:.1em solid rgba(255,255,255,.3);
+    animation:spWipe .5s cubic-bezier(.3,.8,.3,1) both;}
+  .sp-lay.l1{background:rgba(255,255,255,.18); animation-delay:.10s;}
+  .sp-lay.l2{background:rgba(255,255,255,.07); animation-delay:.21s;}
+  .sp-lay.l3{background:rgba(0,0,0,.15);       animation-delay:.32s;}
+  .sp-lay.l4{background:rgba(0,0,0,.30);       animation-delay:.43s;}
+
+  /* Standing water level, drawn at 4.2 m on the same scale. */
+  .sp-wt{position:absolute; left:0; right:0; height:.16em; transform-origin:left;
+    background:repeating-linear-gradient(90deg,#9fe0ff 0 1.1em,transparent 1.1em 2em);
+    animation:spWipe .45s cubic-bezier(.3,.8,.3,1) .68s both;}
+  .sp-wtm{position:absolute; width:0; height:0; margin-left:-.75em; margin-top:-.1em;
+    border-left:.75em solid transparent; border-right:.75em solid transparent;
+    border-top:.95em solid #9fe0ff; animation:spFade .4s ease .68s both;}
+  .sp-wtl{position:absolute; transform:translateY(-140%); color:#bfe9ff; white-space:nowrap;
+    font:600 .82em/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    animation:spFade .4s ease .68s both;}
+
+  /* Depth scale down the right, the way a section sheet carries it. */
+  .sp-spine{position:absolute; right:4%; top:13%; bottom:3%; width:.14em;
+    background:rgba(255,255,255,.5); animation:spFade .3s ease .25s both;}
+  .sp-tick{position:absolute; right:4%; width:1.9em; height:.12em;
+    background:rgba(255,255,255,.55); animation:spFade .3s ease .25s both;}
+  .sp-tick.m{width:1em; height:.1em; background:rgba(255,255,255,.3);}
+  .sp-lab{position:absolute; right:calc(4% + 2.4em); transform:translateY(-50%);
+    text-align:right; white-space:nowrap; color:rgba(255,255,255,.72);
+    font:600 .92em/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums; animation:spFade .3s ease .25s both;}
+
+  /* The hole: two casing lines and the column, driven to 20 m. */
+  .sp-case{position:absolute; left:28%; top:13%; bottom:3%; width:.12em;
+    background:rgba(255,255,255,.75); transform-origin:top;
+    animation:spSink .95s cubic-bezier(.35,0,.3,1) .18s both;}
+  .sp-case.a{margin-left:-.55em;}
+  .sp-case.b{margin-left:2.35em;}
+  .sp-hole{position:absolute; left:28%; top:13%; bottom:3%; width:1.8em;
+    border-radius:.4em; transform-origin:top;
+    background:linear-gradient(180deg,#9fe09a,#4f9d6c 60%,#2a6246);
+    box-shadow:0 0 1.4em rgba(144,224,140,.45);
+    animation:spSink .95s cubic-bezier(.35,0,.3,1) .18s both;}
+  .sp-bit{position:absolute; left:28%; width:4.2em; height:.9em;
+    margin-left:-1.2em; margin-top:-.45em; border-radius:.45em; background:#d8f5d2;
+    box-shadow:0 0 1.6em rgba(216,245,210,.8);
+    animation:spTravel .95s cubic-bezier(.35,0,.3,1) .18s both;}
+  .sp-depth{position:absolute; left:calc(28% + 3.4em); transform:translateY(-50%);
+    color:#dff3e3; white-space:nowrap; text-shadow:0 .1em .6em rgba(0,0,0,.5);
+    font:600 1.08em/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+    animation:spTravel .95s cubic-bezier(.35,0,.3,1) .18s both;}
+
+  /* The drawing settles back, then the plate lands on top of it. */
+  .sp-dim{position:absolute; inset:0;
+    background:linear-gradient(180deg,rgba(10,30,20,.22),rgba(10,30,20,.46) 45%,rgba(10,30,20,.22));
+    animation:spFade .4s ease 1.12s both;}
+  .sp-stage{position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:0 22px;}
+  .sp-panel{
+    background:#fff; border-radius:20px; display:grid; place-items:center;
+    width:min(82vw,380px); min-height:86px;
+    padding:clamp(18px,4.6vw,26px) clamp(22px,6vw,34px);
+    box-shadow:0 22px 60px rgba(0,0,0,.42), 0 0 0 1px rgba(255,255,255,.4);
+    animation:spSnap .52s cubic-bezier(.2,.9,.25,1.3) 1.18s both;
+  }
+  @media (min-width:760px){ .sp-panel{width:440px;} }
+
+  .sp-logo{display:none; width:100%; height:auto;}
+  /* Only ever seen if opifex-logo.js is missing. */
+  .sp-fallback{display:none; text-align:center; color:#50504f;
+    font:700 clamp(21px,5.2vw,28px)/1 Arial,Helvetica,sans-serif; letter-spacing:.14em;}
+  .sp-fallback i{display:block; margin-top:8px; font-style:normal; color:#70c167;
+    font:700 clamp(8px,2.2vw,10px)/1 Arial,Helvetica,sans-serif; letter-spacing:.3em;}
+
+  .sp-word{
+    margin-top:clamp(16px,4vw,22px); color:#fff; opacity:.92; text-transform:uppercase;
+    font:600 clamp(10px,2.8vw,12px)/1 Arial,Helvetica,sans-serif;
+    letter-spacing:.42em; text-indent:.42em;
+    animation:spRise .4s ease 1.4s both;
+  }
+
+  @keyframes spFade{ from{opacity:0;} to{opacity:1;} }
+  @keyframes spWipe{ from{transform:scaleX(0);} to{transform:scaleX(1);} }
+  @keyframes spSink{ from{transform:scaleY(0);} to{transform:scaleY(1);} }
+  @keyframes spTravel{ from{top:13%;} to{top:97%;} }
+  @keyframes spSnap{ 0%{opacity:0;transform:scale(.78);} 62%{opacity:1;transform:scale(1.04);} 100%{transform:scale(1);} }
+  @keyframes spRise{ from{opacity:0; transform:translateY(8px);} to{opacity:.92; transform:none;} }
+
+  /* Still shows, still clears - it just stops moving. */
+  @media (prefers-reduced-motion: reduce){
+    .splash *{animation-duration:.01ms !important; animation-delay:0ms !important;}
+  }
+</style>
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="sp-sky"></div>
+  <div class="sp-lay l1" style="top:13.00%;height:14.70%"></div>
+  <div class="sp-lay l2" style="top:27.70%;height:18.90%"></div>
+  <div class="sp-lay l3" style="top:46.60%;height:21.00%"></div>
+  <div class="sp-lay l4" style="top:67.60%;height:29.40%"></div>
+  <div class="sp-ground"></div>
+
+  <div class="sp-wt"  style="top:30.64%"></div>
+  <div class="sp-wtm" style="top:30.64%;left:52%"></div>
+  <div class="sp-wtl" style="top:30.64%;left:56%">GW 4.2 m</div>
+
+  <div class="sp-spine"></div>
+  <div class="sp-tick"   style="top:13.00%"></div><!-- 0 m is the ground line itself -->
+  <div class="sp-tick m" style="top:21.40%"></div>
+  <div class="sp-tick"   style="top:29.80%"></div><div class="sp-lab" style="top:29.80%">4 m</div>
+  <div class="sp-tick m" style="top:38.20%"></div>
+  <div class="sp-tick"   style="top:46.60%"></div><div class="sp-lab" style="top:46.60%">8 m</div>
+  <div class="sp-tick m" style="top:55.00%"></div>
+  <div class="sp-tick"   style="top:63.40%"></div><div class="sp-lab" style="top:63.40%">12 m</div>
+  <div class="sp-tick m" style="top:71.80%"></div>
+  <div class="sp-tick"   style="top:80.20%"></div><div class="sp-lab" style="top:80.20%">16 m</div>
+  <div class="sp-tick m" style="top:88.60%"></div>
+  <div class="sp-tick"   style="top:97.00%"></div><div class="sp-lab" style="top:97.00%">20 m</div>
+
+  <div class="sp-case a"></div>
+  <div class="sp-case b"></div>
+  <div class="sp-hole"></div>
+  <div class="sp-bit"></div>
+  <div class="sp-depth" id="splashDepth">0.0 m</div>
+
+  <div class="sp-dim"></div>
+  <div class="sp-stage">
+    <div class="sp-panel">
+      <img class="sp-logo" id="splashLogo" alt="Opifex Geotechnics" decoding="sync">
+      <div class="sp-fallback" id="splashFallback">OPIFEX<i>GEOTECHNICS</i></div>
+    </div>
+    <div class="sp-word">Fieldwork</div>
+  </div>
+</div>
+<script>
+(function(){
+  var sp=document.getElementById('splash'); if(!sp) return;
+  var img=document.getElementById('splashLogo'),
+      fb =document.getElementById('splashFallback'),
+      t0 =Date.now();
+
+  // opifex-logo.js is further down the page, so the data URI is not there yet.
+  // Poll for it - the card is still invisible for the first 60ms of the pop,
+  // and the logo lands long before it finishes fading in.
+  (function waitLogo(){
+    if(window.__OPIFEX_LOGO){ img.src=window.__OPIFEX_LOGO; img.style.display='block'; return; }
+    if(Date.now()-t0>900){ fb.style.display='block'; return; }
+    setTimeout(waitLogo,25);
+  })();
+
+  function drop(){ if(sp && sp.parentNode){ sp.parentNode.removeChild(sp); sp=null; } }
+  setTimeout(drop,2350);
+
+  // The depth readout rides the bit down, on the same easing as the hole.
+  // If this never runs the figure simply sits at 0.0 m - nothing breaks.
+  var dep=document.getElementById('splashDepth');
+  if(dep && window.requestAnimationFrame && window.performance){
+    var d0=performance.now()+180;
+    requestAnimationFrame(function step(now){
+      if(!sp) return;
+      if(now<d0){ requestAnimationFrame(step); return; }
+      var k=Math.min(1,(now-d0)/950);
+      var e=k<0.5 ? 2*k*k : 1-2*(1-k)*(1-k);
+      dep.textContent=(20*e).toFixed(1)+' m';
+      if(k<1) requestAnimationFrame(step);
+    });
+  }
+
+  // Tap anywhere to get straight to work. The running keyframe outranks an
+  // inline opacity, so it has to be switched off first.
+  sp.addEventListener('click',function(){
+    sp.style.animation='none';
+    sp.style.transition='opacity .16s linear';
+    sp.style.opacity='0';
+    setTimeout(drop,180);
+  });
+})();
+</script>
+
 <style>
   :root{
     --bg:#eef0e8;
