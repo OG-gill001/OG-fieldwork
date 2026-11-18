@@ -290,6 +290,21 @@
     transition:width .25s linear;}
   .fixcoords{font-family:var(--font-mono); font-size:.76rem; line-height:1.5;
     white-space:pre-wrap; margin:0 0 12px; color:var(--ink);}
+
+  /* ---- backup reminder on the Export tab -------------------------------
+     Green once the file on disk matches what is on the phone, amber when
+     there is newer work than the last file, red when no file has ever been
+     written. The data lives on one device, so this is the only thing
+     standing between a lost phone and a lost day.                        */
+  .backupcard[hidden]{display:none;}
+  .backupcard[data-state="ok"]{border-color:var(--accent);}
+  .backupcard[data-state="stale"]{border-color:var(--flag);}
+  .backupcard[data-state="never"]{border-color:#d23b2e;}
+  .backupcard h2{display:flex; align-items:center; gap:8px;}
+  .backupcard .dot{width:9px; height:9px; border-radius:50%; flex:none;}
+  .backupcard[data-state="ok"]    .dot{background:var(--accent);}
+  .backupcard[data-state="stale"] .dot{background:var(--flag);}
+  .backupcard[data-state="never"] .dot{background:#d23b2e;}
 </style>
 
 
@@ -411,6 +426,7 @@
   <section class="view" id="view-export" hidden>
     <div><div class="eyebrow">Wrap up</div><h1>Export &amp; review</h1></div>
     <div class="stat-grid" id="statGrid"></div>
+    <div class="card backupcard" id="backupCard" hidden></div>
     <div class="card" style="border-color:var(--accent);">
       <h2 style="margin-bottom:6px;">Before you leave site</h2>
       <p class="helptext" style="margin-bottom:4px;">What has been left out, and what each omission will do to the printed sheet. Tap one to go straight to it. This checks what the app&rsquo;s own output needs &mdash; it is not a second opinion on the engineering.</p>
@@ -862,7 +878,7 @@
   function blankProjectRecord(name){
     return {project:{client:'',projectName:name||'',jobNumber:'',location:'',fieldEngineer:'',date:''},
             boreholes:[], dcp:[], photos:[],
-            settings:{pdfScale:1, autoDensity:true}, updatedAt:Date.now()};
+            settings:{pdfScale:1, autoDensity:true}, updatedAt:Date.now(), lastBackupAt:0};
   }
   function bindActive(){
     if(!ACTIVE || !PROJECTS[ACTIVE]){
@@ -979,7 +995,10 @@
       dcp: (remote.dcp||[]).map(normalizeDcp),
       photos: (remote.photos||[]).map(normalizePhoto),
       settings: Object.assign({pdfScale:1, autoDensity:true}, remote.settings||{}),
-      updatedAt: remote.updatedAt||0
+      updatedAt: remote.updatedAt||0,
+      // mergeState rebuilds a fixed shape, so anything not named here is
+      // dropped on the next load - the backup stamp has to be carried
+      lastBackupAt: remote.lastBackupAt||0
     };
   }
 
@@ -3766,19 +3785,100 @@
     document.getElementById('storageNote').textContent = db
       ? 'Synced to this artifact\'s shared record — Claude can read it back directly next time.'
       : 'Saved on this device only (localStorage). Export a file before switching devices.';
+    renderBackupNote();
+  }
+
+  /* ---------------------------------------------------- backup reminder
+     There is no server copy of any of this. A .json export is the only
+     thing that exists off the phone, so the Export tab says plainly where
+     that file stands: whether one was ever written, and whether anything
+     has been logged since it was.                                       */
+  function agoWords(ts){
+    var d=new Date(ts), now=new Date();
+    var hhmm=pad2(d.getHours())+':'+pad2(d.getMinutes());
+    var days=Math.round(
+      (new Date(now.getFullYear(),now.getMonth(),now.getDate()) -
+       new Date(d.getFullYear(),d.getMonth(),d.getDate())) / 86400000);
+    if(days<=0) return 'today at '+hhmm;
+    if(days===1) return 'yesterday at '+hhmm;
+    if(days<7)  return days+' days ago';
+    return 'on '+pad2(d.getDate())+'/'+pad2(d.getMonth()+1)+'/'+d.getFullYear();
+  }
+  function markBackedUp(){
+    // set it past updatedAt, or save()'s own timestamp makes the backup it
+    // just took look out of date the instant it is written
+    STATE.lastBackupAt=Math.max(Date.now(), STATE.updatedAt||0);
+    localSave();
+    renderBackupNote();
+  }
+  function renderBackupNote(){
+    var el=document.getElementById('backupCard'); if(!el) return;
+    if(!(STATE.boreholes.length || STATE.dcp.length || STATE.photos.length)){
+      el.hidden=true; return;        // nothing logged yet - nothing to nag about
+    }
+    el.hidden=false;
+    var last=STATE.lastBackupAt||0, state, head, body;
+    if(!last){
+      state='never';
+      head='No backup taken yet';
+      body='This job is on this phone and nowhere else. If it is lost, wiped or '+
+           'replaced, the whole job goes with it.';
+    } else if((STATE.updatedAt||0) > last){
+      state='stale';
+      head='Last backup '+agoWords(last);
+      body='You have logged more since then, and that newer work is not in any file yet.';
+    } else {
+      state='ok';
+      head='Backed up '+agoWords(last);
+      body='The file matches what is on the phone. Nothing has been logged since.';
+    }
+    el.dataset.state=state;
+    el.innerHTML='<h2 style="margin-bottom:6px;"><span class="dot"></span>'+esc(head)+'</h2>'+
+      '<p class="helptext" style="margin-bottom:'+(state==='ok'?'0':'10px')+';">'+esc(body)+'</p>'+
+      (state==='ok' ? ''
+        : '<div class="btn-row"><button class="btn primary" id="backupNow">⤓ Back up now (.json)</button></div>');
+    var btn=document.getElementById('backupNow');
+    if(btn) btn.addEventListener('click', exportProjectJson);
+  }
+  function exportProjectJson(){
+    var out=JSON.parse(JSON.stringify(STATE));
+    out.boreholes.forEach(function(b){
+      b.intervals.forEach(function(iv){ iv.descriptionResolved = iv.descManual ? iv.description : buildDescription(iv); });
+    });
+    out._standard='Descriptive terms per AS 1726:2017; SPT reporting per AS 1289.6.3.1; DCP per AS 1289.6.3.2';
+    doSave(projSlug()+'_fieldwork.json', JSON.stringify(out,null,2), markBackedUp);
   }
   function projSlug(){
     return (STATE.project.jobNumber||STATE.project.projectName||'fieldwork').replace(/[^a-z0-9]+/gi,'_');
   }
-  function doSave(filename, text){
+  /* The text exports used to go to the CLIPBOARD on every phone. `downloads`
+     is a namespace the artifact runtime provides and GitHub Pages does not,
+     so on the installed app it was always null and the fallback was the only
+     path taken - meaning "All data (.json)" never wrote a file on the one
+     device where the data lives. It now takes the same hardened route as the
+     PDFs and the photo decks, and keeps the clipboard as a last resort. */
+  function doSave(filename, text, onSaved){
     if(downloads){
       downloads.save({filename:filename, data:text})
-        .then(function(){ toast('Saved '+filename); })
+        .then(function(){ toast('Saved '+filename); if(onSaved) onSaved(); })
         .catch(function(err){
           if(err && err.code==='declined'){ toast('Save cancelled'); return; }
-          clipboardFallback(filename, text);
+          textBlobOut(filename, text, onSaved);
         });
-    } else { clipboardFallback(filename, text); }
+      return;
+    }
+    textBlobOut(filename, text, onSaved);
+  }
+  function textBlobOut(filename, text, onSaved){
+    var mime = /\.json$/i.test(filename) ? 'application/json'
+             : /\.csv$/i.test(filename)  ? 'text/csv' : 'text/plain';
+    var blob;
+    try{ blob=new Blob([text], {type:mime+';charset=utf-8'}); }
+    catch(e){ clipboardFallback(filename, text); return; }
+    if(isIOS()){ offerSaveTap(blob, filename, onSaved); return; }
+    if(anchorSave(blob, filename)){ toast('Saved '+filename); if(onSaved) onSaved(); return; }
+    if(openBlob(blob)){ toast('Opened it in a new tab - save it from there'); if(onSaved) onSaved(); return; }
+    clipboardFallback(filename, text);
   }
   function clipboardFallback(filename, text){
     try{
@@ -3809,14 +3909,7 @@
   document.getElementById('expDcpPdf').addEventListener('click',function(){
     exportDcpPdf(STATE.dcp, projSlug()+'_dcp_tests.pdf');
   });
-  document.getElementById('expJson').addEventListener('click',function(){
-    var out=JSON.parse(JSON.stringify(STATE));
-    out.boreholes.forEach(function(b){
-      b.intervals.forEach(function(iv){ iv.descriptionResolved = iv.descManual ? iv.description : buildDescription(iv); });
-    });
-    out._standard='Descriptive terms per AS 1726:2017; SPT reporting per AS 1289.6.3.1; DCP per AS 1289.6.3.2';
-    doSave(projSlug()+'_fieldwork.json', JSON.stringify(out,null,2));
-  });
+  document.getElementById('expJson').addEventListener('click', exportProjectJson);
   document.getElementById('expBh').addEventListener('click',function(){
     var rows=[['Borehole','From_m','To_m','Description','Moisture','Consistency_field','Excavation','Groundwater',
                'USCS','Samples_and_tests','DCP_inline','Comments','Flagged','FlagNote']];
@@ -4051,7 +4144,7 @@
   }
   // iOS will not take a programmatic download, and a share sheet needs a live
   // tap. So park the finished file on a bar and let the next tap hand it over.
-  function offerSaveTap(blob, filename){
+  function offerSaveTap(blob, filename, onSaved){
     var old=document.getElementById('fwlSaveBar');
     if(old && old.parentNode) old.parentNode.removeChild(old);
     var bar=document.createElement('div');
@@ -4080,18 +4173,18 @@
       //    - it refuses some, and a refused share used to leave nothing behind
       if(file && navigator.canShare && navigator.canShare({files:[file]})){
         navigator.share({files:[file], title:filename})
-          .then(drop)
+          .then(function(){ drop(); if(onSaved) onSaved(); })
           .catch(function(err){
             if(err && err.name==='AbortError') return;   // they backed out, keep the bar
             if(!anchorSave(blob, filename)) openBlob(blob);
-            drop();
+            drop(); if(onSaved) onSaved();
           });
         return;
       }
       // 2. a plain download, which Safari does honour
-      if(anchorSave(blob, filename)){ toast('Saved '+filename); drop(); return; }
+      if(anchorSave(blob, filename)){ toast('Saved '+filename); drop(); if(onSaved) onSaved(); return; }
       // 3. last resort - show it and let them share it themselves
-      if(openBlob(blob)){ drop(); return; }
+      if(openBlob(blob)){ drop(); if(onSaved) onSaved(); return; }
       toast('Could not hand that file over - try opening the app in Safari');
     });
     close.addEventListener('click', drop);
